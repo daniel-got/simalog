@@ -173,9 +173,9 @@ export default function Minta() {
       </div>
 
       {/* Request Cards */}
-      <div className="space-y-13">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
         {list.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-34 text-slate-300 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
+          <div className="col-span-full flex flex-col items-center justify-center py-34 text-slate-300 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
             <ClipboardList size={36} className="mb-8" />
             <p className="text-sm font-medium text-slate-400">Tidak ada permintaan</p>
           </div>

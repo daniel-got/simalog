@@ -39,13 +39,13 @@ export default function Utama() {
   const lowStock = barang.filter(b => b.stok_saat_ini <= 5);
 
   return (
-    <div className="space-y-21 animate-[fadeUp_.35s_ease_both]"
+    <div className="space-y-21 lg:space-y-34 animate-[fadeUp_.35s_ease_both]"
       style={{ '--tw-enter-translate-y': '13px' }}
     >
       {/* ── Stats ── */}
       <section>
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-13">Ringkasan</p>
-        <div className="grid grid-cols-2 gap-13">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-13 lg:gap-21">
           <StatCard title="Total Jenis"  value={totalJenis}
             icon={Boxes}     bg="bg-teal-50"   iconColor="text-teal-600" />
           <StatCard title="Total Stok"   value={totalStok}
@@ -57,60 +57,67 @@ export default function Utama() {
         </div>
       </section>
 
-      {/* ── Low Stock Warning ── */}
-      {lowStock.length > 0 && (
-        <section>
-          <div className="bg-amber-50 border border-amber-200 rounded-[21px] p-21">
-            <div className="flex items-center gap-8 mb-13">
-              <div className="w-21 h-21 rounded-[8px] bg-amber-100 flex items-center justify-center shrink-0">
-                <AlertTriangle size={13} className="text-amber-600" />
-              </div>
-              <p className="text-sm font-bold text-amber-800">Stok Menipis</p>
-              <span className="ml-auto bg-amber-200 text-amber-800 text-[10px] font-bold px-8 py-2 rounded-full">
-                {lowStock.length} item
-              </span>
-            </div>
-            <div className="space-y-8">
-              {lowStock.map(b => (
-                <div key={b.kode_barang}
-                  className="flex items-center justify-between bg-white rounded-[13px] px-13 py-13
-                    border border-amber-100">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-700 leading-tight">{b.nama_barang}</p>
-                    <p className="text-[10px] font-mono text-slate-400 mt-2">{b.kode_barang}</p>
-                  </div>
-                  <span className="text-red-600 font-black text-lg leading-none">{b.stok_saat_ini}</span>
-                </div>
-              ))}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-21 lg:gap-34">
+        {/* ── Chart (Lebar 2/3 di desktop) ── */}
+        <section className="lg:col-span-2">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-13">Top 5 Stok Terbanyak</p>
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-21">
+            <div className="h-52 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={top5} margin={{ top: 5, right: 5, left: -21, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 10, fontFamily: 'Inter', fill: '#94a3b8', fontWeight: 600 }}
+                    tickLine={false} axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fontFamily: 'Inter', fill: '#94a3b8', fontWeight: 600 }}
+                    tickLine={false} axisLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+                  <Bar dataKey="stok" fill="#0d9488" radius={[8, 8, 0, 0]} maxBarSize={34} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </section>
-      )}
 
-      {/* ── Chart ── */}
-      <section>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-13">Top 5 Stok Terbanyak</p>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-21">
-          <div className="h-52 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={top5} margin={{ top: 5, right: 5, left: -21, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 10, fontFamily: 'Inter', fill: '#94a3b8', fontWeight: 600 }}
-                  tickLine={false} axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fontFamily: 'Inter', fill: '#94a3b8', fontWeight: 600 }}
-                  tickLine={false} axisLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                <Bar dataKey="stok" fill="#0d9488" radius={[8, 8, 0, 0]} maxBarSize={34} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </section>
+        {/* ── Low Stock Warning (Lebar 1/3 di desktop) ── */}
+        <section className="lg:col-span-1">
+          {lowStock.length > 0 ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-[21px] p-21 h-full">
+              <div className="flex items-center gap-8 mb-13">
+                <div className="w-21 h-21 rounded-[8px] bg-amber-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={13} className="text-amber-600" />
+                </div>
+                <p className="text-sm font-bold text-amber-800">Stok Menipis</p>
+                <span className="ml-auto bg-amber-200 text-amber-800 text-[10px] font-bold px-8 py-2 rounded-full">
+                  {lowStock.length} item
+                </span>
+              </div>
+              <div className="space-y-8 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                {lowStock.map(b => (
+                  <div key={b.kode_barang}
+                    className="flex items-center justify-between bg-white rounded-[13px] px-13 py-13
+                      border border-amber-100">
+                    <div className="min-w-0 pr-3">
+                      <p className="text-sm font-semibold text-slate-700 leading-tight truncate">{b.nama_barang}</p>
+                      <p className="text-[10px] font-mono text-slate-400 mt-2">{b.kode_barang}</p>
+                    </div>
+                    <span className="text-red-600 font-black text-lg leading-none shrink-0">{b.stok_saat_ini}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+             <div className="bg-slate-50 border border-slate-100 rounded-[21px] p-21 h-full flex flex-col items-center justify-center text-slate-400">
+                <Package size={34} className="mb-5 text-slate-300" />
+                <p className="text-xs font-bold uppercase tracking-widest text-center">Stok Aman</p>
+             </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

@@ -175,7 +175,7 @@ export default function Stok() {
           Tidak ada data barang sesuai pencarian.
         </div>
       ) : (
-        <div className="space-y-13">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
           {filteredBarang.map(b => (
             <div key={b.kode_barang} className="bg-white p-13 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-13">

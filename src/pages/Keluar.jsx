@@ -159,7 +159,7 @@ export default function Keluar() {
           Tidak ada data transaksi keluar.
         </div>
       ) : viewMode === 'card' ? (
-        <div className="space-y-13">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
           {filtered.map(k => {
             const brgInfo = barang.find(b => b.kode_barang === k.kode_barang);
             return (

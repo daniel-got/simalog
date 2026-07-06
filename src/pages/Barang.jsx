@@ -300,7 +300,7 @@ export default function Barang() {
           Belum ada data barang
         </div>
       ) : viewMode === 'card' ? (
-        <div className="space-y-13">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
           {filteredBarang.map(b => (
             <ItemCard 
               key={b.kode_barang}
