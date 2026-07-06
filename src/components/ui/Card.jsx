@@ -2,20 +2,25 @@ import { cn } from "../../utils/cn";
 
 export function Card({ children, className }) {
   return (
-    <div className={cn("bg-white rounded-2xl shadow-sm border border-gray-100 p-4", className)}>
+    <div className={cn(
+      "bg-white rounded-2xl border border-slate-100 shadow-sm p-21",
+      className
+    )}>
       {children}
     </div>
   );
 }
 
-export function StatCard({ title, value, icon: Icon, colorClass }) {
+export function StatCard({ title, value, icon: Icon, bg, iconColor }) {
   return (
-    <Card className={cn("flex flex-col gap-2", colorClass)}>
-      <div className="flex items-center justify-between text-gray-700">
-        <span className="text-sm font-medium">{title}</span>
-        {Icon && <Icon size={20} className="opacity-70" />}
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-21 flex flex-col gap-13">
+      <div className={cn("w-34 h-34 rounded-xl flex items-center justify-center", bg)}>
+        <Icon size={21} className={iconColor} />
       </div>
-      <div className="text-3xl font-bold text-gray-900">{value}</div>
-    </Card>
+      <div>
+        <p className="text-xs font-medium text-slate-400 tracking-wide uppercase">{title}</p>
+        <p className="text-3xl font-black text-slate-800 tracking-tight leading-none mt-3">{value}</p>
+      </div>
+    </div>
   );
 }

@@ -1,120 +1,154 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, LayoutGrid, List } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Card } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
+import LogCard from '../components/ui/LogCard';
+
+const EMPTY = { kode_barang: '', jumlah: '', tanggal: new Date().toISOString().split('T')[0], penerima: '' };
 
 export default function Keluar() {
   const { keluar, addKeluar, barang } = useStore();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [filterDate, setFilterDate] = useState('');
-  const [search, setSearch] = useState('');
+  const [open, setOpen]     = useState(false);
+  const [filter, setFilter] = useState({ date: '', search: '' });
+  const [form, setForm]     = useState(EMPTY);
+  const [viewMode, setViewMode] = useState('card');
 
-  const [formData, setFormData] = useState({
-    kode_barang: '',
-    jumlah: '',
-    tanggal: new Date().toISOString().split('T')[0],
-    penerima: ''
+  const barangOptions = barang.map(b => ({
+    label: `${b.kode_barang} — ${b.nama_barang} (sisa: ${b.stok_saat_ini})`,
+    value: b.kode_barang,
+  }));
+
+  const filtered = keluar.filter(k => {
+    const d = filter.date   ? k.tanggal === filter.date : true;
+    const s = filter.search ? (k.kode_barang + k.penerima).toLowerCase().includes(filter.search.toLowerCase()) : true;
+    return d && s;
   });
-
-  const filteredData = keluar.filter(item => {
-    const matchDate = filterDate ? item.tanggal === filterDate : true;
-    const matchSearch = item.kode_barang.toLowerCase().includes(search.toLowerCase()) || 
-                        item.penerima.toLowerCase().includes(search.toLowerCase());
-    return matchDate && matchSearch;
-  });
-
-  const handleExport = () => {
-    const ws = XLSX.utils.json_to_sheet(filteredData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Barang_Keluar");
-    XLSX.writeFile(wb, "Laporan_Keluar.xlsx");
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const brg = barang.find(b => b.kode_barang === formData.kode_barang);
-    if (brg && brg.stok_saat_ini < formData.jumlah) {
-      alert('Stok tidak mencukupi!');
+    const brg = barang.find(b => b.kode_barang === form.kode_barang);
+    if (!brg || brg.stok_saat_ini < form.jumlah) {
+      alert(`Stok tidak mencukupi! Sisa: ${brg?.stok_saat_ini ?? 0}`);
       return;
     }
-    addKeluar(formData);
-    setIsFormOpen(false);
-    setFormData({ kode_barang: '', jumlah: '', tanggal: new Date().toISOString().split('T')[0], penerima: '' });
+    addKeluar(form);
+    setOpen(false);
+    setForm(EMPTY);
   };
 
-  const barangOptions = barang.map(b => ({ label: `${b.kode_barang} - ${b.nama_barang} (Sisa: ${b.stok_saat_ini})`, value: b.kode_barang }));
+  const handleExport = () => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filtered), 'Keluar');
+    XLSX.writeFile(wb, 'Laporan_Keluar.xlsx');
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800">Barang Keluar</h2>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleExport} className="px-2">
-            <Download size={18} />
+    <div className="space-y-21">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-black text-slate-800 tracking-tight">Barang Keluar</h1>
+          <p className="text-xs text-slate-400 mt-2">{filtered.length} transaksi</p>
+        </div>
+        <div className="flex gap-8">
+          <div className="flex bg-slate-100 rounded-xl p-3">
+            <button 
+              onClick={() => setViewMode('card')}
+              className={`p-5 rounded-lg transition-colors ${viewMode === 'card' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
+              title="Card View"
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button 
+              onClick={() => setViewMode('table')}
+              className={`p-5 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
+              title="Table View"
+            >
+              <List size={15} />
+            </button>
+          </div>
+          <Button variant="ghost" size="icon" onClick={handleExport} title="Export Excel">
+            <Download size={16} />
           </Button>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus size={18} /> Catat
+          <Button size="sm" onClick={() => setOpen(true)}>
+            <Plus size={15} /> Catat
           </Button>
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
-        <Input placeholder="Cari kode/penerima..." value={search} onChange={e => setSearch(e.target.value)} />
+      <div className="flex gap-8">
+        <Input type="date" value={filter.date} className="text-xs"
+          onChange={e => setFilter({ ...filter, date: e.target.value })} />
+        <Input placeholder="Cari..." value={filter.search}
+          onChange={e => setFilter({ ...filter, search: e.target.value })} />
       </div>
 
-      {isFormOpen && (
-        <Card className="bg-orange-50 border-orange-100">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Select 
-              label="Barang" 
-              required 
-              options={barangOptions}
-              value={formData.kode_barang} 
-              onChange={e => setFormData({...formData, kode_barang: e.target.value})} 
-            />
-            <Input 
-              label="Jumlah" 
-              type="number" 
-              required 
-              value={formData.jumlah} 
-              onChange={e => setFormData({...formData, jumlah: Number(e.target.value)})} 
-            />
-            <Input 
-              label="Tanggal" 
-              type="date" 
-              required 
-              value={formData.tanggal} 
-              onChange={e => setFormData({...formData, tanggal: e.target.value})} 
-            />
-            <Input 
-              label="Penerima / Tujuan" 
-              required 
-              value={formData.penerima} 
-              onChange={e => setFormData({...formData, penerima: e.target.value})} 
-            />
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Batal</Button>
-              <Button type="submit">Simpan</Button>
+      {open && (
+        <Card className="border-orange-200 bg-orange-50/30 p-21">
+          <p className="text-base font-bold text-slate-700 mb-13">📤  Catat Barang Keluar</p>
+          <form onSubmit={handleSubmit} className="space-y-13">
+            <Select label="Barang" required options={barangOptions}
+              value={form.kode_barang}
+              onChange={e => setForm({ ...form, kode_barang: e.target.value })} />
+            <div className="grid grid-cols-2 gap-13">
+              <Input label="Jumlah" type="number" required min="1"
+                value={form.jumlah}
+                onChange={e => setForm({ ...form, jumlah: Number(e.target.value) })} />
+              <Input label="Tanggal" type="date" required
+                value={form.tanggal}
+                onChange={e => setForm({ ...form, tanggal: e.target.value })} />
+            </div>
+            <Input label="Penerima / Tujuan" required value={form.penerima}
+              onChange={e => setForm({ ...form, penerima: e.target.value })} />
+            <div className="flex justify-end gap-8 pt-5">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>Batal</Button>
+              <Button type="submit" size="sm">Simpan</Button>
             </div>
           </form>
         </Card>
       )}
 
-      <Table headers={['Tanggal', 'Kode Brg', 'Jumlah', 'Penerima']}>
-        {filteredData.map(item => (
-          <tr key={item.id}>
-            <td className="px-4 py-3 text-xs">{item.tanggal}</td>
-            <td className="px-4 py-3 font-mono text-xs">{item.kode_barang}</td>
-            <td className="px-4 py-3 font-bold text-red-600">-{item.jumlah}</td>
-            <td className="px-4 py-3">{item.penerima}</td>
-          </tr>
-        ))}
-      </Table>
+      {/* Data Views */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-34 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
+          Tidak ada data transaksi keluar.
+        </div>
+      ) : viewMode === 'card' ? (
+        <div className="space-y-13">
+          {filtered.map(k => {
+            const brgInfo = barang.find(b => b.kode_barang === k.kode_barang);
+            return (
+              <LogCard 
+                key={k.id}
+                type="keluar"
+                date={k.tanggal}
+                itemCode={k.kode_barang}
+                itemName={brgInfo?.nama_barang}
+                qty={k.jumlah}
+                receiver={k.penerima}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <Table headers={['Tanggal', 'Barang', '-Qty', 'Penerima']}>
+          {filtered.map(k => (
+            <tr key={k.id} className="hover:bg-slate-50 transition-colors">
+              <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{k.tanggal}</td>
+              <td className="px-13 py-13 font-mono text-xs text-teal-700 font-bold">{k.kode_barang}</td>
+              <td className="px-13 py-13">
+                <span className="bg-red-100 text-red-600 text-xs font-black px-8 py-3 rounded-lg">
+                  -{k.jumlah}
+                </span>
+              </td>
+              <td className="px-13 py-13 text-xs text-slate-600">{k.penerima}</td>
+            </tr>
+          ))}
+        </Table>
+      )}
     </div>
   );
 }

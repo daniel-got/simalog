@@ -1,112 +1,121 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Layers3, ArrowUp, ArrowDown } from 'lucide-react';
 import useStore from '../store/useStore';
-import { Card } from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Table } from '../components/ui/Table';
-import { Input, Select } from '../components/ui/Input';
+import { Select } from '../components/ui/Input';
 
 export default function Stok() {
-  const { barang, updateBarang, addMasuk, addKeluar, currentUser } = useStore();
-  const [selectedKode, setSelectedKode] = useState('');
-  const [jenis, setJenis] = useState('masuk'); // masuk atau keluar
+  const { barang, addMasuk, addKeluar } = useStore();
+  const [kode, setKode]   = useState('');
+  const [jenis, setJenis] = useState('masuk');
   const [jumlah, setJumlah] = useState('');
-
-  const selectedBarang = barang.find(b => b.kode_barang === selectedKode);
+  const selected = barang.find(b => b.kode_barang === kode);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selectedKode || !jumlah || jumlah <= 0) return;
-
-    if (jenis === 'keluar' && selectedBarang.stok_saat_ini < jumlah) {
-      alert('Stok tidak mencukupi untuk dikeluarkan!');
-      return;
+    if (!kode || !jumlah || jumlah <= 0) return;
+    if (jenis === 'keluar' && selected?.stok_saat_ini < jumlah) {
+      alert('Stok tidak mencukupi!'); return;
     }
-
-    const logData = {
-      kode_barang: selectedKode,
-      jumlah: Number(jumlah),
+    const payload = {
+      kode_barang: kode, jumlah: Number(jumlah),
       tanggal: new Date().toISOString().split('T')[0],
-      penerima: jenis === 'masuk' ? 'Penyesuaian Sistem (Admin)' : 'Penghapusan Sistem (Admin)'
+      penerima: `Penyesuaian Admin (${jenis})`,
     };
-
-    if (jenis === 'masuk') {
-      addMasuk(logData);
-    } else {
-      addKeluar(logData);
-    }
-
+    jenis === 'masuk' ? addMasuk(payload) : addKeluar(payload);
     alert('Stok berhasil disesuaikan!');
-    setJumlah('');
-    setSelectedKode('');
+    setKode(''); setJumlah('');
   };
 
-  const barangOptions = barang.map(b => ({ label: `${b.kode_barang} - ${b.nama_barang}`, value: b.kode_barang }));
+  const barangOptions = barang.map(b => ({ label: `${b.kode_barang} — ${b.nama_barang}`, value: b.kode_barang }));
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h2 className="text-xl font-bold text-gray-800">Penyesuaian Stok Cepat</h2>
+    <div className="space-y-21">
+      <div>
+        <h1 className="text-xl font-black text-slate-800 tracking-tight">Penyesuaian Stok</h1>
+        <p className="text-xs text-slate-400 mt-2">Adjustment otomatis masuk / keluar log</p>
+      </div>
 
-      <Card className="bg-white">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Select 
-            label="Pilih Barang" 
-            required 
-            options={barangOptions}
-            value={selectedKode} 
-            onChange={e => setSelectedKode(e.target.value)} 
-          />
-          
-          {selectedBarang && (
-            <div className="bg-gray-50 p-3 rounded-lg text-sm border border-gray-100 flex justify-between">
-              <span className="text-gray-600">Stok Saat Ini:</span>
-              <span className="font-bold text-gray-900">{selectedBarang.stok_saat_ini}</span>
+      {/* Form */}
+      <div className="bg-white rounded-[21px] border border-slate-100 shadow-sm p-21">
+        <form onSubmit={handleSubmit} className="space-y-13">
+          <Select label="Pilih Barang" required options={barangOptions}
+            value={kode} onChange={e => setKode(e.target.value)} />
+
+          {selected && (
+            <div className="flex items-center justify-between bg-teal-50 border border-teal-100 rounded-[13px] px-13 py-13">
+              <span className="text-sm font-semibold text-slate-500">Stok Saat Ini</span>
+              <span className="text-3xl font-black text-teal-700">{selected.stok_saat_ini}</span>
             </div>
           )}
 
-          <div className="flex gap-2">
-            <Select 
-              label="Jenis Penyesuaian" 
-              required 
-              options={[
-                { label: 'Tambah (Masuk)', value: 'masuk' },
-                { label: 'Kurangi (Keluar)', value: 'keluar' }
-              ]}
-              value={jenis} 
-              onChange={e => setJenis(e.target.value)} 
-            />
-            <Input 
-              label="Jumlah" 
-              type="number" 
-              required 
-              min="1"
-              value={jumlah} 
-              onChange={e => setJumlah(Number(e.target.value))} 
-            />
+          {/* Jenis toggle */}
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-8">Jenis Penyesuaian</p>
+            <div className="grid grid-cols-2 gap-8">
+              {['masuk', 'keluar'].map(j => (
+                <button key={j} type="button"
+                  onClick={() => setJenis(j)}
+                  className={`flex items-center justify-center gap-8 py-8 rounded-[13px] text-base font-semibold
+                    border transition-all duration-150 active:scale-95
+                    ${jenis === j
+                      ? j === 'masuk'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-red-500 text-white border-red-500 shadow-sm'
+                      : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                    }`
+                  }
+                >
+                  {j === 'masuk' ? <ArrowDown size={15} /> : <ArrowUp size={15} />}
+                  {j === 'masuk' ? 'Tambah' : 'Kurangi'}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <Button type="submit" className="w-full">
-            Terapkan Penyesuaian
-          </Button>
-          <p className="text-xs text-center text-gray-400 mt-2">
-            Penyesuaian ini akan otomatis tercatat di Log Masuk atau Log Keluar
-          </p>
-        </form>
-      </Card>
+          <input
+            type="number" min="1" required
+            placeholder="Masukkan jumlah..."
+            value={jumlah}
+            onChange={e => setJumlah(Number(e.target.value))}
+            className="w-full px-13 py-13 text-3xl font-black text-center rounded-[13px] border border-slate-200
+              focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none bg-slate-50"
+          />
 
-      <h3 className="font-bold text-gray-700 mt-8 mb-4">Daftar Stok Saat Ini</h3>
-      <Table headers={['Kode', 'Nama', 'Stok']}>
-        {barang.map(b => (
-          <tr key={b.kode_barang}>
-            <td className="px-4 py-3 font-mono text-xs">{b.kode_barang}</td>
-            <td className="px-4 py-3">{b.nama_barang}</td>
-            <td className="px-4 py-3">
-              <span className={`font-bold ${b.stok_saat_ini <= 5 ? 'text-red-600' : 'text-gray-700'}`}>
-                {b.stok_saat_ini}
-              </span>
-            </td>
-          </tr>
-        ))}
-      </Table>
+          <Button type="submit" className="w-full justify-center py-13">
+            <Layers3 size={16} /> Terapkan Penyesuaian
+          </Button>
+        </form>
+      </div>
+
+      {/* Stok list */}
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Daftar Stok</p>
+      
+      {barang.length === 0 ? (
+        <div className="text-center py-34 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
+          Belum ada data barang
+        </div>
+      ) : (
+        <div className="space-y-13">
+          {barang.map(b => (
+            <div key={b.kode_barang} className="bg-white p-13 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-13">
+                <div className={`w-34 h-34 rounded-xl flex items-center justify-center font-black text-xs shrink-0
+                  ${b.stok_saat_ini <= 5 ? 'bg-red-50 text-red-600' : 'bg-teal-50 text-teal-600'}`}>
+                  {b.stok_saat_ini}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{b.nama_barang}</p>
+                  <p className="text-[9px] font-mono text-slate-400 mt-2">{b.kode_barang}</p>
+                </div>
+              </div>
+              {b.stok_saat_ini <= 5 && (
+                <span className="text-[9px] bg-red-100 text-red-500 px-5 py-2 rounded-full font-bold whitespace-nowrap ml-5 shrink-0">MENIPIS</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
