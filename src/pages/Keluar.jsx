@@ -1,21 +1,26 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Download, LayoutGrid, List } from 'lucide-react';
+import { Plus, Download, LayoutGrid, List, Search, QrCode } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Card } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
 import LogCard from '../components/ui/LogCard';
+import { KELOMPOK_BARANG } from '../utils/constants';
 
 const EMPTY = { kode_barang: '', jumlah: '', tanggal: new Date().toISOString().split('T')[0], penerima: '' };
 
 export default function Keluar() {
   const { keluar, addKeluar, barang } = useStore();
   const [open, setOpen]     = useState(false);
-  const [filter, setFilter] = useState({ date: '', search: '' });
   const [form, setForm]     = useState(EMPTY);
   const [viewMode, setViewMode] = useState('card');
+  
+  // Filter States
+  const [filterText, setFilterText] = useState('');
+  const [filterDate, setFilterDate] = useState('');
+  const [filterKelompok, setFilterKelompok] = useState('');
 
   const barangOptions = barang.map(b => ({
     label: `${b.kode_barang} — ${b.nama_barang} (sisa: ${b.stok_saat_ini})`,
@@ -23,9 +28,14 @@ export default function Keluar() {
   }));
 
   const filtered = keluar.filter(k => {
-    const d = filter.date   ? k.tanggal === filter.date : true;
-    const s = filter.search ? (k.kode_barang + k.penerima).toLowerCase().includes(filter.search.toLowerCase()) : true;
-    return d && s;
+    const brg = barang.find(b => b.kode_barang === k.kode_barang) || {};
+    const textTarget = (k.kode_barang + k.penerima + (brg.nama_barang || '')).toLowerCase();
+    
+    const matchText = textTarget.includes(filterText.toLowerCase());
+    const matchDate = filterDate ? k.tanggal === filterDate : true;
+    const matchKelompok = filterKelompok ? brg.kelompok_barang === filterKelompok : true;
+    
+    return matchText && matchDate && matchKelompok;
   });
 
   const handleSubmit = (e) => {
@@ -79,13 +89,6 @@ export default function Keluar() {
         </div>
       </div>
 
-      <div className="flex gap-8">
-        <Input type="date" value={filter.date} className="text-xs"
-          onChange={e => setFilter({ ...filter, date: e.target.value })} />
-        <Input placeholder="Cari..." value={filter.search}
-          onChange={e => setFilter({ ...filter, search: e.target.value })} />
-      </div>
-
       {open && (
         <Card className="border-orange-200 bg-orange-50/30 p-21">
           <p className="text-base font-bold text-slate-700 mb-13">📤  Catat Barang Keluar</p>
@@ -110,6 +113,45 @@ export default function Keluar() {
           </form>
         </Card>
       )}
+
+      {/* Search & Filter Card */}
+      <div className="bg-slate-50 p-13 rounded-2xl border border-slate-100 shadow-sm space-y-8">
+        <div className="flex gap-8">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-13 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Cari transaksi (nama/kode barang, penerima)..."
+              value={filterText}
+              onChange={e => setFilterText(e.target.value)}
+              className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all"
+            />
+          </div>
+          <button className="w-34 h-34 flex items-center justify-center bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-sm transition-colors shrink-0" title="Scan Barcode">
+            <QrCode size={16} />
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-8">
+          <select 
+            className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-slate-600 font-medium"
+            value={filterKelompok}
+            onChange={e => setFilterKelompok(e.target.value)}
+          >
+            <option value="">Semua Kelompok</option>
+            {Object.keys(KELOMPOK_BARANG).map(k => (
+              <option key={k} value={k}>{k}</option>
+            ))}
+          </select>
+          
+          <input 
+            type="date"
+            className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-slate-600 font-medium"
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+          />
+        </div>
+      </div>
 
       {/* Data Views */}
       {filtered.length === 0 ? (

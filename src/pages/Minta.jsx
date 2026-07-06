@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Check, X, Clock, ClipboardList, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Check, X, Clock, ClipboardList, Pencil, Trash2, Search, QrCode } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Card } from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -30,13 +30,24 @@ export default function Minta() {
   const { minta, addMinta, updateMinta, deleteMinta, updateMintaStatus, barang, currentUser, addKeluar } = useStore();
   const [open, setOpen]           = useState(false);
   const [editId, setEditId]       = useState(null);
-  const [filterStatus, setFilter] = useState('');
   const [form, setForm]           = useState(EMPTY);
+  
+  // Filter States
+  const [filterText, setFilterText] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
   const isAdmin = currentUser?.role === 'Admin';
 
   const list = (isAdmin ? minta : minta.filter(m => m.id_user === currentUser.id))
-    .filter(m => filterStatus ? m.status_persetujuan === filterStatus : true)
+    .filter(m => {
+      const brg = barang.find(b => b.kode_barang === m.kode_barang) || {};
+      const textTarget = (m.kode_barang + m.nama_pemohon + (brg.nama_barang || '')).toLowerCase();
+      
+      const matchText = textTarget.includes(filterText.toLowerCase());
+      const matchStatus = filterStatus ? m.status_persetujuan === filterStatus : true;
+      
+      return matchText && matchStatus;
+    })
     .sort((a, b) => new Date(b.tanggal_minta) - new Date(a.tanggal_minta));
 
   const closeForm = () => {
@@ -85,7 +96,6 @@ export default function Minta() {
   };
 
   const barangOptions = barang.map(b => ({ label: `${b.kode_barang} — ${b.nama_barang}`, value: b.kode_barang }));
-  const statusOptions = ['Diajukan', 'Disetujui', 'Diterima', 'Ditolak'].map(s => ({ label: s, value: s }));
 
   return (
     <div className="space-y-21">
@@ -99,12 +109,6 @@ export default function Minta() {
           <Plus size={15} /> Ajukan
         </Button>
       </div>
-
-      {/* Filter */}
-      <Select options={statusOptions} value={filterStatus}
-        onChange={e => setFilter(e.target.value)}
-        placeholder="Semua status"
-      />
 
       {/* Form */}
       {open && (
@@ -135,6 +139,38 @@ export default function Minta() {
           </form>
         </Card>
       )}
+
+      {/* Search & Filter Card */}
+      <div className="bg-slate-50 p-13 rounded-2xl border border-slate-100 shadow-sm space-y-8">
+        <div className="flex gap-8">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-13 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Cari nama barang, kode, atau pemohon..."
+              value={filterText}
+              onChange={e => setFilterText(e.target.value)}
+              className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+            />
+          </div>
+          <button className="w-34 h-34 flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-sm transition-colors shrink-0" title="Scan Barcode">
+            <QrCode size={16} />
+          </button>
+        </div>
+        
+        <div>
+          <select 
+            className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-600 font-medium"
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+          >
+            <option value="">Semua Status</option>
+            {['Diajukan', 'Disetujui', 'Diterima', 'Ditolak'].map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* Request Cards */}
       <div className="space-y-13">

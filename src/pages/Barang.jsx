@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
 import ItemCard from '../components/ui/ItemCard';
+import BarcodeScanner from '../components/ui/BarcodeScanner';
 import { KELOMPOK_BARANG } from '../utils/constants';
 
 const EMPTY = { 
@@ -21,8 +22,6 @@ const EMPTY = {
   image_url: '' 
 };
 
-};
-
 export default function Barang() {
   const { barang, addBarang, updateBarang, deleteBarang } = useStore();
   const [open, setOpen]         = useState(false);
@@ -31,6 +30,8 @@ export default function Barang() {
   const [file, setFile]         = useState(null);
   const [uploading, setUploading] = useState(false);
   const [viewMode, setViewMode] = useState('card');
+  const [showScanner, setShowScanner] = useState(false);
+
   const [filterText, setFilterText] = useState('');
   const [filterKelompok, setFilterKelompok] = useState('');
   const [sortOrder, setSortOrder] = useState('nama_asc');
@@ -77,6 +78,30 @@ export default function Barang() {
 
   const handleEdit = (b) => { setForm(b); setEditKode(b.kode_barang); setOpen(true); };
 
+  const handleScanResult = (scannedCode) => {
+    setShowScanner(false); // Tutup scanner
+    if (!scannedCode) return;
+
+    const code = scannedCode;
+    
+    // Cek apakah barang sudah ada di database
+    const existing = barang.find(b => b.kode_barang === code);
+    if (existing) {
+      alert(`Barang dengan kode ${code} sudah ada. Membuka form edit.`);
+      handleEdit(existing);
+    } else {
+      // Buka form tambah dengan data pre-filled
+      setForm({
+        ...EMPTY,
+        kode_barang: code,
+        nama_barang: 'Item Hasil Scan',
+        satuan_harga: 0,
+      });
+      setEditKode(null);
+      setOpen(true);
+    }
+  };
+
   const handleExport = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(barang), 'Barang');
@@ -88,20 +113,21 @@ export default function Barang() {
   };
 
   const kelompokOptions = Object.keys(KELOMPOK_BARANG).map(k => ({ label: k, value: k }));
-  const subkelompokOptions = form.kelompok_barang 
+  const subkelompokOptions = (form.kelompok_barang && KELOMPOK_BARANG[form.kelompok_barang])
     ? KELOMPOK_BARANG[form.kelompok_barang].map(s => ({ label: s, value: s }))
     : [];
 
   const filteredBarang = barang
     .filter(b => {
-      const matchText = (b.nama_barang + b.kode_barang).toLowerCase().includes(filterText.toLowerCase());
+      const textTarget = ((b.nama_barang || '') + (b.kode_barang || '')).toLowerCase();
+      const matchText = textTarget.includes(filterText.toLowerCase());
       const matchKelompok = filterKelompok ? b.kelompok_barang === filterKelompok : true;
       return matchText && matchKelompok;
     })
     .sort((a, b) => {
-      if (sortOrder === 'nama_asc') return a.nama_barang.localeCompare(b.nama_barang);
-      if (sortOrder === 'nama_desc') return b.nama_barang.localeCompare(a.nama_barang);
-      if (sortOrder === 'kode_asc') return a.kode_barang.localeCompare(b.kode_barang);
+      if (sortOrder === 'nama_asc') return (a.nama_barang || '').localeCompare(b.nama_barang || '');
+      if (sortOrder === 'nama_desc') return (b.nama_barang || '').localeCompare(a.nama_barang || '');
+      if (sortOrder === 'kode_asc') return (a.kode_barang || '').localeCompare(b.kode_barang || '');
       if (sortOrder === 'harga_asc') return (a.satuan_harga || 0) - (b.satuan_harga || 0);
       if (sortOrder === 'harga_desc') return (b.satuan_harga || 0) - (a.satuan_harga || 0);
       return 0;
@@ -232,7 +258,11 @@ export default function Barang() {
               className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
             />
           </div>
-          <button className="w-34 h-34 flex items-center justify-center bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm transition-colors shrink-0" title="Scan Barcode">
+          <button 
+            onClick={() => setShowScanner(true)}
+            className="w-34 h-34 flex items-center justify-center bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-sm transition-colors shrink-0" 
+            title="Scan Barcode Kamera"
+          >
             <QrCode size={16} />
           </button>
         </div>
@@ -343,6 +373,14 @@ export default function Barang() {
             </tr>
           ))}
         </Table>
+      )}
+
+      {/* Komponen Kamera Scanner */}
+      {showScanner && (
+        <BarcodeScanner 
+          onResult={handleScanResult} 
+          onClose={() => setShowScanner(false)} 
+        />
       )}
     </div>
   );
