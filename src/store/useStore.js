@@ -1,8 +1,11 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 
-const useStore = create((set, get) => ({
-  currentUser: null,
+const useStore = create(
+  persist(
+    (set, get) => ({
+      currentUser: null,
   
   // Login Admin menggunakan Supabase Auth (Email & Password)
   loginWithEmail: async (email, password) => {
@@ -154,6 +157,12 @@ const useStore = create((set, get) => ({
     if (error) alert('Gagal hapus permintaan: ' + error.message);
     else get().fetchData();
   },
-}));
+    }),
+    {
+      name: 'simalog-auth-storage', // Key di localStorage
+      partialize: (state) => ({ currentUser: state.currentUser }), // Hanya simpan sesi user
+    }
+  )
+);
 
 export default useStore;
