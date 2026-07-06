@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
 import {
   LayoutDashboard, Package, TrendingDown, TrendingUp,
   Layers3, ClipboardList, LogOut, Boxes
@@ -15,8 +16,14 @@ const NAV_ALL = [
 ];
 
 export default function AppLayout() {
-  const { currentUser, logout } = useStore();
+  const { currentUser, logout, fetchData } = useStore();
   const navs = NAV_ALL.filter(n => !n.role || n.role === currentUser?.role);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchData();
+    }
+  }, [currentUser, fetchData]);
 
   return (
     <div className="min-h-dvh bg-slate-50 flex lg:flex-row flex-col">

@@ -57,3 +57,32 @@ body {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 }
+
+/* 
+  Scale up Fibonacci values on Desktop (>= 1024px) 
+  agar tampilan desktop tidak terlihat terlalu kecil / kerdil
+*/
+@media (min-width: 1024px) {
+  :root {
+    /* Spacing & Sizing yang dibesarkan ~30% - 40% */
+    --spacing-5: 7px;
+    --spacing-8: 11px;
+    --spacing-13: 18px;
+    --spacing-21: 29px;
+    --spacing-34: 48px;
+    --spacing-55: 77px;
+
+    /* Typography yang disesuaikan menjadi proporsi desktop */
+    --text-xs: 13px;
+    --text-sm: 16px;
+    --text-base: 21px;
+    --text-lg: 28px;
+    --text-xl: 36px;
+    --text-2xl: 48px;
+  }
+
+  /* Secara otomatis memperbesar ukuran seluruh icon Lucide sekitar 35% di desktop */
+  svg.lucide {
+    transform: scale(1.35);
+  }
+}
