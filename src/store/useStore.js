@@ -26,7 +26,7 @@ const useStore = create(
 
   // Login Guest lokal (tanpa password, role User)
   loginAsGuest: () => {
-    set({ currentUser: { id: 'guest-123', nama: 'Guest (Pegawai)', role: 'User' } });
+    set({ currentUser: { id: '00000000-0000-0000-0000-000000000000', nama: 'Guest (Pegawai)', role: 'User' } });
     get().fetchData();
   },
   
