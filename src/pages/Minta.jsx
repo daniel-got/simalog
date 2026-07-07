@@ -4,6 +4,7 @@ import useStore from '../store/useStore';
 import { Card } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
+import SearchableSelect from '../components/ui/SearchableSelect';
 import Pagination from '../components/ui/Pagination';
 
 const STATUS_STYLE = {
@@ -130,9 +131,11 @@ export default function Minta() {
               value={form.nama_pemohon} 
               onChange={e => setForm({ ...form, nama_pemohon: e.target.value })} 
             />
-            <Select label="Barang" required options={barangOptions}
+            <SearchableSelect 
+              label="Barang" required options={barangOptions}
               value={form.kode_barang}
-              onChange={e => setForm({ ...form, kode_barang: e.target.value })} />
+              onChange={e => setForm({ ...form, kode_barang: e.target.value })} 
+            />
             <div className="grid grid-cols-2 gap-13">
               <Input label="Jumlah" type="number" required min="1"
                 value={form.jumlah}
