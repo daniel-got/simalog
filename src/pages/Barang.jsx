@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Download, Pencil, Trash2, Package, Image as ImageIcon, LayoutGrid, List, Search, QrCode } from 'lucide-react';
+import { Plus, Download, Pencil, Trash2, Package, Image as ImageIcon, LayoutGrid, List, Search, QrCode, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
 import { supabase } from '../lib/supabase';
 import { Card } from '../components/ui/Card';
@@ -378,9 +379,14 @@ export default function Barang() {
               </td>
               <td className="px-13 py-13">
                 <div className="flex gap-5">
+                  <Link to={`/barang/${b.kode_barang}`}
+                    className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center
+                      hover:bg-teal-100 transition-colors" title="Detail">
+                    <Eye size={12} />
+                  </Link>
                   <button onClick={() => handleEdit(b)}
                     className="w-21 h-21 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center
-                      hover:bg-blue-100 transition-colors">
+                      hover:bg-blue-100 transition-colors" title="Edit">
                     <Pencil size={12} />
                   </button>
                   <button onClick={() => deleteBarang(b.kode_barang)}
