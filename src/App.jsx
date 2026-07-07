@@ -10,6 +10,7 @@ import Masuk  from './pages/Masuk';
 import Keluar from './pages/Keluar';
 import Stok   from './pages/Stok';
 import Minta  from './pages/Minta';
+import DetailBarang from './pages/DetailBarang';
 
 function Login() {
   const loginWithEmail = useStore(s => s.loginWithEmail);
@@ -123,6 +124,7 @@ export default function App() {
             </>
           )}
           <Route path="minta" element={<Minta />} />
+          <Route path="barang/:kode" element={<DetailBarang />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

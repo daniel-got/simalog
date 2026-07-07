@@ -1,5 +1,6 @@
-import { Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Pencil, Trash2, Image as ImageIcon, FileText } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { Link } from 'react-router-dom';
 
 export default function ItemCard({
   itemName,
@@ -76,6 +77,13 @@ export default function ItemCard({
           </div>
 
           <div className="flex gap-5">
+            <Link
+              to={`/barang/${itemCode}`}
+              className="text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors px-8 py-5 flex items-center justify-center text-[10px] font-bold"
+              title="Detail"
+            >
+              Detail
+            </Link>
             <button
               onClick={onEdit}
               className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center"
