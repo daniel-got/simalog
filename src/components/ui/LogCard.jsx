@@ -1,7 +1,7 @@
-import { TrendingDown, TrendingUp, Clock, User } from 'lucide-react';
+import { TrendingDown, TrendingUp, Clock, User, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
-export default function LogCard({ type, date, itemCode, itemName, qty, receiver }) {
+export default function LogCard({ type, date, itemCode, itemName, qty, receiver, onEdit, onDelete }) {
   const isMasuk = type === 'masuk';
   
   return (
@@ -38,13 +38,38 @@ export default function LogCard({ type, date, itemCode, itemName, qty, receiver 
         
         <p className="text-[9px] lg:text-[10px] font-mono text-slate-400 mt-2 lg:mt-3 truncate">{itemCode}</p>
         
-        <div className="flex flex-row lg:flex-col items-center lg:items-start gap-8 lg:gap-3 mt-5 lg:mt-8 pt-3 lg:pt-5 border-t border-slate-50 lg:border-slate-100 text-[9px] lg:text-[10px] font-medium text-slate-500">
-          <span className="flex items-center gap-2">
-            <Clock size={11} className="text-slate-400" /> {date}
-          </span>
-          <span className="flex items-center gap-2 truncate">
-            <User size={11} className="text-slate-400" /> {receiver}
-          </span>
+        <div className="flex justify-between items-end">
+          <div className="flex flex-row lg:flex-col items-center lg:items-start gap-8 lg:gap-3 mt-5 lg:mt-8 pt-3 lg:pt-5 border-t border-slate-50 lg:border-slate-100 text-[9px] lg:text-[10px] font-medium text-slate-500 w-full">
+            <span className="flex items-center gap-2">
+              <Clock size={11} className="text-slate-400" /> {date}
+            </span>
+            <span className="flex items-center gap-2 truncate">
+              <User size={11} className="text-slate-400" /> {receiver}
+            </span>
+          </div>
+
+          {(onEdit || onDelete) && (
+            <div className="flex gap-5 mt-5 lg:mt-8 pt-3 lg:pt-5 shrink-0">
+              {onEdit && (
+                <button 
+                  onClick={onEdit}
+                  className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+                  title="Edit"
+                >
+                  <Pencil size={13} strokeWidth={2.5} />
+                </button>
+              )}
+              {onDelete && (
+                <button 
+                  onClick={onDelete}
+                  className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+                  title="Hapus"
+                >
+                  <Trash2 size={13} strokeWidth={2.5} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

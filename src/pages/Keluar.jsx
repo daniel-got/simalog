@@ -14,9 +14,11 @@ import { KELOMPOK_BARANG } from '../utils/constants';
 const EMPTY = { kode_barang: '', jumlah: '', tanggal: new Date().toISOString().split('T')[0], penerima: '' };
 
 export default function Keluar() {
-  const { keluar, addKeluar, barang } = useStore();
-  const [open, setOpen]     = useState(false);
-  const [form, setForm]     = useState(EMPTY);
+  const { keluar, addKeluar, updateLogTransaksi, deleteLogTransaksi, barang } = useStore();
+  const [open, setOpen]       = useState(false);
+  const [editId, setEditId]   = useState(null);
+  const [oldItem, setOldItem] = useState(null);
+  const [form, setForm]       = useState(EMPTY);
   const [viewMode, setViewMode] = useState('card');
   
   const [filterText, setFilterText] = useState('');
@@ -48,13 +50,47 @@ export default function Keluar() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const brg = barang.find(b => b.kode_barang === form.kode_barang);
-    if (!brg || brg.stok_saat_ini < form.jumlah) {
-      alert(`Stok tidak mencukupi! Sisa: ${brg?.stok_saat_ini ?? 0}`);
+    
+    // Perhitungan validasi sisa stok untuk mode edit:
+    // Sisa stok riil = stok saat ini + jumlah barang yang keluar (karena akan direvert)
+    let sisaStok = brg?.stok_saat_ini ?? 0;
+    if (editId && oldItem && oldItem.kode_barang === form.kode_barang) {
+      sisaStok += oldItem.jumlah;
+    }
+    
+    if (!brg || sisaStok < form.jumlah) {
+      alert(`Stok tidak mencukupi! Sisa yang tersedia: ${sisaStok}`);
       return;
     }
-    addKeluar(form);
+
+    if (editId) {
+      updateLogTransaksi(editId, oldItem, { ...form, jenis_transaksi: 'Keluar' });
+    } else {
+      addKeluar(form);
+    }
+    
     setOpen(false);
+    setEditId(null);
+    setOldItem(null);
     setForm(EMPTY);
+  };
+
+  const handleEdit = (item) => {
+    setEditId(item.id);
+    setOldItem(item);
+    setForm({
+      kode_barang: item.kode_barang,
+      jumlah: item.jumlah,
+      tanggal: item.tanggal,
+      penerima: item.penerima,
+    });
+    setOpen(true);
+  };
+
+  const handleDelete = (item) => {
+    if (confirm(`Yakin ingin menghapus log keluar barang ${item.kode_barang}? Stok akan dikembalikan (bertambah) sebesar ${item.jumlah}.`)) {
+      deleteLogTransaksi(item.id, item);
+    }
   };
 
   const handleExport = () => {
@@ -90,7 +126,12 @@ export default function Keluar() {
           <Button variant="ghost" size="icon" onClick={handleExport} title="Export Excel">
             <Download size={16} />
           </Button>
-          <Button size="sm" onClick={() => setOpen(true)}>
+          <Button size="sm" onClick={() => {
+            setEditId(null);
+            setOldItem(null);
+            setForm(EMPTY);
+            setOpen(true);
+          }}>
             <Plus size={15} /> Catat
           </Button>
         </div>
@@ -98,7 +139,9 @@ export default function Keluar() {
 
       {open && (
         <Card className="border-orange-200 bg-orange-50/30 p-21">
-          <p className="text-base font-bold text-slate-700 mb-13">📤  Catat Barang Keluar</p>
+          <p className="text-base font-bold text-slate-700 mb-13">
+            {editId ? '✏️  Edit Barang Keluar' : '📤  Catat Barang Keluar'}
+          </p>
           <form onSubmit={handleSubmit} className="space-y-13">
             <SearchableSelect 
               label="Barang" required options={barangOptions}
@@ -181,6 +224,8 @@ export default function Keluar() {
                   itemName={brgInfo?.nama_barang}
                   qty={k.jumlah}
                   receiver={k.penerima}
+                  onEdit={() => handleEdit(k)}
+                  onDelete={() => handleDelete(k)}
                 />
               );
             })}
@@ -195,7 +240,7 @@ export default function Keluar() {
         </div>
       ) : (
         <div className="space-y-21">
-          <Table headers={['Tanggal', 'Barang', '-Qty', 'Penerima']}>
+          <Table headers={['Tanggal', 'Barang', '-Qty', 'Penerima', 'Aksi']}>
             {paged.map(k => (
               <tr key={k.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{k.tanggal}</td>
@@ -206,6 +251,12 @@ export default function Keluar() {
                   </span>
                 </td>
                 <td className="px-13 py-13 text-xs text-slate-600">{k.penerima}</td>
+                <td className="px-13 py-13">
+                  <div className="flex gap-5">
+                    <button onClick={() => handleEdit(k)} className="text-teal-600 p-5 hover:bg-teal-50 rounded-lg">Edit</button>
+                    <button onClick={() => handleDelete(k)} className="text-red-600 p-5 hover:bg-red-50 rounded-lg">Hapus</button>
+                  </div>
+                </td>
               </tr>
             ))}
           </Table>

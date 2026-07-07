@@ -130,6 +130,59 @@ const useStore = create(
     }
   },
 
+  updateLogTransaksi: async (id, oldItem, newItem) => {
+    // 1. Revert efek stok lama
+    const oldBarang = get().barang.find(b => b.kode_barang === oldItem.kode_barang);
+    if (oldBarang) {
+      const revertQty = oldItem.jenis_transaksi === 'Masuk' 
+        ? oldBarang.stok_saat_ini - oldItem.jumlah 
+        : oldBarang.stok_saat_ini + oldItem.jumlah;
+      await supabase.from('barang').update({ stok_saat_ini: revertQty }).eq('kode_barang', oldBarang.kode_barang);
+    }
+
+    // Ambil data barang terbaru setelah revert
+    const { data: latestBarang } = await supabase.from('barang').select('*');
+
+    // 2. Apply efek stok baru
+    const newBarang = latestBarang?.find(b => b.kode_barang === newItem.kode_barang);
+    if (newBarang) {
+      const newQty = parseInt(newItem.jumlah);
+      const applyQty = oldItem.jenis_transaksi === 'Masuk' 
+        ? newBarang.stok_saat_ini + newQty 
+        : newBarang.stok_saat_ini - newQty;
+      await supabase.from('barang').update({ stok_saat_ini: applyQty }).eq('kode_barang', newBarang.kode_barang);
+    }
+
+    // 3. Update log
+    const payload = {
+      kode_barang: newItem.kode_barang,
+      jumlah: parseInt(newItem.jumlah),
+      tanggal: newItem.tanggal,
+      penerima: newItem.penerima,
+    };
+    const { error } = await supabase.from('log_transaksi').update(payload).eq('id', id);
+    if (error) alert('Gagal update log: ' + error.message);
+    
+    get().fetchData();
+  },
+
+  deleteLogTransaksi: async (id, item) => {
+    // 1. Revert efek stok
+    const brg = get().barang.find(b => b.kode_barang === item.kode_barang);
+    if (brg) {
+      const revertQty = item.jenis_transaksi === 'Masuk' 
+        ? brg.stok_saat_ini - item.jumlah 
+        : brg.stok_saat_ini + item.jumlah;
+      await supabase.from('barang').update({ stok_saat_ini: revertQty }).eq('kode_barang', brg.kode_barang);
+    }
+
+    // 2. Delete log
+    const { error } = await supabase.from('log_transaksi').delete().eq('id', id);
+    if (error) alert('Gagal hapus log: ' + error.message);
+    
+    get().fetchData();
+  },
+
   // Permintaan Actions
   addMinta: async (item) => {
     const { error } = await supabase.from('permintaan').insert([item]);

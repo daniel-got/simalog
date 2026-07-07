@@ -14,8 +14,10 @@ import { KELOMPOK_BARANG } from '../utils/constants';
 const EMPTY = { kode_barang: '', jumlah: '', tanggal: new Date().toISOString().split('T')[0], penerima: '' };
 
 export default function Masuk() {
-  const { masuk, addMasuk, barang } = useStore();
+  const { masuk, addMasuk, updateLogTransaksi, deleteLogTransaksi, barang } = useStore();
   const [open, setOpen]       = useState(false);
+  const [editId, setEditId]   = useState(null);
+  const [oldItem, setOldItem] = useState(null);
   const [form, setForm]       = useState(EMPTY);
   const [viewMode, setViewMode] = useState('card');
   
@@ -48,9 +50,33 @@ export default function Masuk() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    addMasuk(form);
+    if (editId) {
+      updateLogTransaksi(editId, oldItem, { ...form, jenis_transaksi: 'Masuk' });
+    } else {
+      addMasuk(form);
+    }
     setOpen(false);
+    setEditId(null);
+    setOldItem(null);
     setForm(EMPTY);
+  };
+
+  const handleEdit = (item) => {
+    setEditId(item.id);
+    setOldItem(item);
+    setForm({
+      kode_barang: item.kode_barang,
+      jumlah: item.jumlah,
+      tanggal: item.tanggal,
+      penerima: item.penerima,
+    });
+    setOpen(true);
+  };
+
+  const handleDelete = (item) => {
+    if (confirm(`Yakin ingin menghapus log masuk barang ${item.kode_barang}? Stok akan dikurangi sebesar ${item.jumlah}.`)) {
+      deleteLogTransaksi(item.id, item);
+    }
   };
 
   const handleExport = () => {
@@ -86,7 +112,12 @@ export default function Masuk() {
           <Button variant="ghost" size="icon" onClick={handleExport} title="Export Excel">
             <Download size={16} />
           </Button>
-          <Button size="sm" onClick={() => setOpen(true)}>
+          <Button size="sm" onClick={() => {
+            setEditId(null);
+            setOldItem(null);
+            setForm(EMPTY);
+            setOpen(true);
+          }}>
             <Plus size={15} /> Catat
           </Button>
         </div>
@@ -94,7 +125,9 @@ export default function Masuk() {
 
       {open && (
         <Card className="border-emerald-200 bg-emerald-50/30 p-21">
-          <p className="text-base font-bold text-slate-700 mb-13">📥  Catat Barang Masuk</p>
+          <p className="text-base font-bold text-slate-700 mb-13">
+            {editId ? '✏️  Edit Barang Masuk' : '📥  Catat Barang Masuk'}
+          </p>
           <form onSubmit={handleSubmit} className="space-y-13">
             <SearchableSelect 
               label="Barang" required options={barangOptions}
@@ -177,6 +210,8 @@ export default function Masuk() {
                   itemName={brgInfo?.nama_barang}
                   qty={m.jumlah}
                   receiver={m.penerima}
+                  onEdit={() => handleEdit(m)}
+                  onDelete={() => handleDelete(m)}
                 />
               );
             })}
@@ -191,7 +226,7 @@ export default function Masuk() {
         </div>
       ) : (
         <div className="space-y-21">
-          <Table headers={['Tanggal', 'Barang', '+Qty', 'Penerima']}>
+          <Table headers={['Tanggal', 'Barang', '+Qty', 'Penerima', 'Aksi']}>
             {paged.map(m => (
               <tr key={m.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{m.tanggal}</td>
@@ -202,6 +237,12 @@ export default function Masuk() {
                   </span>
                 </td>
                 <td className="px-13 py-13 text-xs text-slate-600">{m.penerima}</td>
+                <td className="px-13 py-13">
+                  <div className="flex gap-5">
+                    <button onClick={() => handleEdit(m)} className="text-teal-600 p-5 hover:bg-teal-50 rounded-lg">Edit</button>
+                    <button onClick={() => handleDelete(m)} className="text-red-600 p-5 hover:bg-red-50 rounded-lg">Hapus</button>
+                  </div>
+                </td>
               </tr>
             ))}
           </Table>
