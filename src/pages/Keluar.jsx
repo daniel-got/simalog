@@ -241,10 +241,17 @@ export default function Keluar() {
       ) : (
         <div className="space-y-21">
           <Table headers={['Tanggal', 'Barang', '-Qty', 'Penerima', 'Aksi']}>
-            {paged.map(k => (
+            {paged.map(k => {
+              const brgInfo = barang.find(b => b.kode_barang === k.kode_barang);
+              return (
               <tr key={k.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{k.tanggal}</td>
-                <td className="px-13 py-13 font-mono text-xs text-teal-700 font-bold">{k.kode_barang}</td>
+                <td className="px-13 py-13">
+                  <div className="flex flex-col">
+                    <span className="font-mono text-[10px] text-teal-700 font-bold">{k.kode_barang}</span>
+                    <span className="text-xs font-semibold text-slate-800 mt-1">{brgInfo?.nama_barang || '-'}</span>
+                  </div>
+                </td>
                 <td className="px-13 py-13">
                   <span className="bg-red-100 text-red-600 text-xs font-black px-8 py-3 rounded-lg">
                     -{k.jumlah}
@@ -258,7 +265,8 @@ export default function Keluar() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </Table>
           <Pagination
             total={filtered.length}

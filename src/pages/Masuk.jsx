@@ -227,10 +227,17 @@ export default function Masuk() {
       ) : (
         <div className="space-y-21">
           <Table headers={['Tanggal', 'Barang', '+Qty', 'Penerima', 'Aksi']}>
-            {paged.map(m => (
+            {paged.map(m => {
+              const brgInfo = barang.find(b => b.kode_barang === m.kode_barang);
+              return (
               <tr key={m.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{m.tanggal}</td>
-                <td className="px-13 py-13 font-mono text-xs text-teal-700 font-bold">{m.kode_barang}</td>
+                <td className="px-13 py-13">
+                  <div className="flex flex-col">
+                    <span className="font-mono text-[10px] text-teal-700 font-bold">{m.kode_barang}</span>
+                    <span className="text-xs font-semibold text-slate-800 mt-1">{brgInfo?.nama_barang || '-'}</span>
+                  </div>
+                </td>
                 <td className="px-13 py-13">
                   <span className="bg-emerald-100 text-emerald-700 text-xs font-black px-8 py-3 rounded-lg">
                     +{m.jumlah}
@@ -244,7 +251,8 @@ export default function Masuk() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </Table>
           <Pagination
             total={filtered.length}
