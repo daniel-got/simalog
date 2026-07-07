@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Check, X, Clock, ClipboardList, Pencil, Trash2, Search, QrCode } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Card } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Input, Select } from '../components/ui/Input';
+import Pagination from '../components/ui/Pagination';
 
 const STATUS_STYLE = {
   Diajukan: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -36,6 +37,12 @@ export default function Minta() {
   const [filterText, setFilterText] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  useEffect(() => { setCurrentPage(1); }, [filterText, filterStatus]);
+
   const isAdmin = currentUser?.role === 'Admin';
 
   const list = (isAdmin ? minta : minta.filter(m => m.id_user === currentUser.id))
@@ -49,6 +56,8 @@ export default function Minta() {
       return matchText && matchStatus;
     })
     .sort((a, b) => new Date(b.tanggal_minta) - new Date(a.tanggal_minta));
+
+  const paged = list.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const closeForm = () => {
     setOpen(false);
@@ -173,83 +182,94 @@ export default function Minta() {
       </div>
 
       {/* Request Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
-        {list.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center py-34 text-slate-300 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
-            <ClipboardList size={36} className="mb-8" />
-            <p className="text-sm font-medium text-slate-400">Tidak ada permintaan</p>
-          </div>
-        ) : list.map(m => {
-          const brgInfo = barang.find(b => b.kode_barang === m.kode_barang);
-          const status  = m.status_persetujuan;
-          return (
-            <div key={m.id}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              {/* Top color bar */}
-              <div className={`h-[5px] w-full ${BAR_COLOR[status] ?? 'bg-slate-200'}`} />
+      <div className="space-y-21">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
+          {list.length === 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-34 text-slate-300 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
+              <ClipboardList size={36} className="mb-8" />
+              <p className="text-sm font-medium text-slate-400">Tidak ada permintaan</p>
+            </div>
+          ) : paged.map(m => {
+            const brgInfo = barang.find(b => b.kode_barang === m.kode_barang);
+            const status  = m.status_persetujuan;
+            return (
+              <div key={m.id}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                {/* Top color bar */}
+                <div className={`h-[5px] w-full ${BAR_COLOR[status] ?? 'bg-slate-200'}`} />
 
-              <div className="p-21 flex justify-between items-start gap-13">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-800 truncate">
-                    {brgInfo?.nama_barang ?? m.kode_barang}
-                  </p>
-                  <p className="font-mono text-[10px] text-slate-400 mt-2">{m.kode_barang}</p>
+                <div className="p-21 flex justify-between items-start gap-13">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-800 truncate">
+                      {brgInfo?.nama_barang ?? m.kode_barang}
+                    </p>
+                    <p className="font-mono text-[10px] text-slate-400 mt-2">{m.kode_barang}</p>
 
-                  <div className="flex items-center gap-8 mt-5 text-xs text-slate-500">
-                    <span className="flex items-center gap-2">
-                      <Clock size={11} /> {m.tanggal_minta}
-                    </span>
-                    <span className="font-semibold text-slate-700">× {m.jumlah}</span>
+                    <div className="flex items-center gap-8 mt-5 text-xs text-slate-500">
+                      <span className="flex items-center gap-2">
+                        <Clock size={11} /> {m.tanggal_minta}
+                      </span>
+                      <span className="font-semibold text-slate-700">× {m.jumlah}</span>
+                    </div>
+
+                    {isAdmin && m.nama_pemohon && (
+                      <p className="text-xs text-teal-600 font-semibold mt-5">
+                        oleh: {m.nama_pemohon}
+                      </p>
+                    )}
                   </div>
 
-                  {isAdmin && m.nama_pemohon && (
-                    <p className="text-xs text-teal-600 font-semibold mt-5">
-                      oleh: {m.nama_pemohon}
-                    </p>
-                  )}
-                </div>
+                  <div className="flex flex-col items-end gap-8 shrink-0">
+                    <span className={`text-[10px] font-bold px-8 py-3 rounded-full border ${STATUS_STYLE[status] ?? 'bg-slate-100 text-slate-500'}`}>
+                      {status}
+                    </span>
 
-                <div className="flex flex-col items-end gap-8 shrink-0">
-                  <span className={`text-[10px] font-bold px-8 py-3 rounded-full border ${STATUS_STYLE[status] ?? 'bg-slate-100 text-slate-500'}`}>
-                    {status}
-                  </span>
-
-                  {isAdmin && (
-                    <div className="flex flex-col gap-3 mt-3 items-end">
-                      {status === 'Diajukan' && (
+                    {isAdmin && (
+                      <div className="flex flex-col gap-3 mt-3 items-end">
+                        {status === 'Diajukan' && (
+                          <div className="flex gap-5">
+                            <button onClick={() => handleApprove(m)}
+                              className="w-21 h-21 rounded-[8px] bg-emerald-500 text-white flex items-center justify-center
+                                hover:bg-emerald-600 active:scale-95 transition-all shadow-sm" title="Setujui">
+                              <Check size={14} strokeWidth={3} />
+                            </button>
+                            <button onClick={() => updateMintaStatus(m.id, 'Ditolak')}
+                              className="w-21 h-21 rounded-[8px] bg-red-100 text-red-500 flex items-center justify-center
+                                hover:bg-red-200 active:scale-95 transition-all" title="Tolak">
+                              <X size={14} strokeWidth={3} />
+                            </button>
+                          </div>
+                        )}
+                        
                         <div className="flex gap-5">
-                          <button onClick={() => handleApprove(m)}
-                            className="w-21 h-21 rounded-[8px] bg-emerald-500 text-white flex items-center justify-center
-                              hover:bg-emerald-600 active:scale-95 transition-all shadow-sm" title="Setujui">
-                            <Check size={14} strokeWidth={3} />
+                          <button onClick={() => handleEdit(m)}
+                            className="w-21 h-21 rounded-[8px] bg-blue-50 text-blue-500 flex items-center justify-center
+                              hover:bg-blue-100 active:scale-95 transition-all" title="Edit">
+                            <Pencil size={12} strokeWidth={2.5} />
                           </button>
-                          <button onClick={() => updateMintaStatus(m.id, 'Ditolak')}
-                            className="w-21 h-21 rounded-[8px] bg-red-100 text-red-500 flex items-center justify-center
-                              hover:bg-red-200 active:scale-95 transition-all" title="Tolak">
-                            <X size={14} strokeWidth={3} />
+                          <button onClick={() => deleteMinta(m.id)}
+                            className="w-21 h-21 rounded-[8px] bg-rose-50 text-rose-500 flex items-center justify-center
+                              hover:bg-rose-100 active:scale-95 transition-all" title="Hapus">
+                            <Trash2 size={12} strokeWidth={2.5} />
                           </button>
                         </div>
-                      )}
-                      
-                      <div className="flex gap-5">
-                        <button onClick={() => handleEdit(m)}
-                          className="w-21 h-21 rounded-[8px] bg-blue-50 text-blue-500 flex items-center justify-center
-                            hover:bg-blue-100 active:scale-95 transition-all" title="Edit">
-                          <Pencil size={12} strokeWidth={2.5} />
-                        </button>
-                        <button onClick={() => deleteMinta(m.id)}
-                          className="w-21 h-21 rounded-[8px] bg-rose-50 text-rose-500 flex items-center justify-center
-                            hover:bg-rose-100 active:scale-95 transition-all" title="Hapus">
-                          <Trash2 size={12} strokeWidth={2.5} />
-                        </button>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+        {list.length > 0 && (
+          <Pagination
+            total={list.length}
+            perPage={perPage}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPerPage}
+          />
+        )}
       </div>
     </div>
   );

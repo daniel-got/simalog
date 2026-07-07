@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Plus, Download, LayoutGrid, List, Search, QrCode } from 'lucide-react';
 import useStore from '../store/useStore';
@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
 import LogCard from '../components/ui/LogCard';
+import Pagination from '../components/ui/Pagination';
 import { KELOMPOK_BARANG } from '../utils/constants';
 
 const EMPTY = { kode_barang: '', jumlah: '', tanggal: new Date().toISOString().split('T')[0], penerima: '' };
@@ -17,10 +18,15 @@ export default function Keluar() {
   const [form, setForm]     = useState(EMPTY);
   const [viewMode, setViewMode] = useState('card');
   
-  // Filter States
   const [filterText, setFilterText] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterKelompok, setFilterKelompok] = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  useEffect(() => { setCurrentPage(1); }, [filterText, filterDate, filterKelompok]);
 
   const barangOptions = barang.map(b => ({
     label: `${b.kode_barang} — ${b.nama_barang} (sisa: ${b.stok_saat_ini})`,
@@ -30,13 +36,13 @@ export default function Keluar() {
   const filtered = keluar.filter(k => {
     const brg = barang.find(b => b.kode_barang === k.kode_barang) || {};
     const textTarget = (k.kode_barang + k.penerima + (brg.nama_barang || '')).toLowerCase();
-    
     const matchText = textTarget.includes(filterText.toLowerCase());
     const matchDate = filterDate ? k.tanggal === filterDate : true;
     const matchKelompok = filterKelompok ? brg.kelompok_barang === filterKelompok : true;
-    
     return matchText && matchDate && matchKelompok;
   });
+
+  const paged = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -159,37 +165,55 @@ export default function Keluar() {
           Tidak ada data transaksi keluar.
         </div>
       ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
-          {filtered.map(k => {
-            const brgInfo = barang.find(b => b.kode_barang === k.kode_barang);
-            return (
-              <LogCard 
-                key={k.id}
-                type="keluar"
-                date={k.tanggal}
-                itemCode={k.kode_barang}
-                itemName={brgInfo?.nama_barang}
-                qty={k.jumlah}
-                receiver={k.penerima}
-              />
-            );
-          })}
+        <div className="space-y-21">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
+            {paged.map(k => {
+              const brgInfo = barang.find(b => b.kode_barang === k.kode_barang);
+              return (
+                <LogCard 
+                  key={k.id}
+                  type="keluar"
+                  date={k.tanggal}
+                  itemCode={k.kode_barang}
+                  itemName={brgInfo?.nama_barang}
+                  qty={k.jumlah}
+                  receiver={k.penerima}
+                />
+              );
+            })}
+          </div>
+          <Pagination
+            total={filtered.length}
+            perPage={perPage}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPerPage}
+          />
         </div>
       ) : (
-        <Table headers={['Tanggal', 'Barang', '-Qty', 'Penerima']}>
-          {filtered.map(k => (
-            <tr key={k.id} className="hover:bg-slate-50 transition-colors">
-              <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{k.tanggal}</td>
-              <td className="px-13 py-13 font-mono text-xs text-teal-700 font-bold">{k.kode_barang}</td>
-              <td className="px-13 py-13">
-                <span className="bg-red-100 text-red-600 text-xs font-black px-8 py-3 rounded-lg">
-                  -{k.jumlah}
-                </span>
-              </td>
-              <td className="px-13 py-13 text-xs text-slate-600">{k.penerima}</td>
-            </tr>
-          ))}
-        </Table>
+        <div className="space-y-21">
+          <Table headers={['Tanggal', 'Barang', '-Qty', 'Penerima']}>
+            {paged.map(k => (
+              <tr key={k.id} className="hover:bg-slate-50 transition-colors">
+                <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{k.tanggal}</td>
+                <td className="px-13 py-13 font-mono text-xs text-teal-700 font-bold">{k.kode_barang}</td>
+                <td className="px-13 py-13">
+                  <span className="bg-red-100 text-red-600 text-xs font-black px-8 py-3 rounded-lg">
+                    -{k.jumlah}
+                  </span>
+                </td>
+                <td className="px-13 py-13 text-xs text-slate-600">{k.penerima}</td>
+              </tr>
+            ))}
+          </Table>
+          <Pagination
+            total={filtered.length}
+            perPage={perPage}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPerPage}
+          />
+        </div>
       )}
     </div>
   );

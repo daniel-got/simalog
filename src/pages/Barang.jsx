@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Plus, Download, Pencil, Trash2, Package, Image as ImageIcon, LayoutGrid, List, Search, QrCode } from 'lucide-react';
 import useStore from '../store/useStore';
@@ -9,6 +9,7 @@ import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
 import ItemCard from '../components/ui/ItemCard';
 import BarcodeScanner from '../components/ui/BarcodeScanner';
+import Pagination from '../components/ui/Pagination';
 import { KELOMPOK_BARANG } from '../utils/constants';
 
 const EMPTY = { 
@@ -35,6 +36,13 @@ export default function Barang() {
   const [filterText, setFilterText] = useState('');
   const [filterKelompok, setFilterKelompok] = useState('');
   const [sortOrder, setSortOrder] = useState('nama_asc');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  // Reset ke halaman 1 saat filter berubah
+  useEffect(() => { setCurrentPage(1); }, [filterText, filterKelompok, sortOrder]);
 
   const closeForm = () => { setOpen(false); setEditKode(null); setForm(EMPTY); setFile(null); };
 
@@ -132,6 +140,8 @@ export default function Barang() {
       if (sortOrder === 'harga_desc') return (b.satuan_harga || 0) - (a.satuan_harga || 0);
       return 0;
     });
+
+  const pagedBarang = filteredBarang.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   return (
     <div className="space-y-21">
@@ -300,26 +310,36 @@ export default function Barang() {
           Belum ada data barang
         </div>
       ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
-          {filteredBarang.map(b => (
-            <ItemCard 
-              key={b.kode_barang}
-              itemName={b.nama_barang}
-              itemCode={b.kode_barang}
-              category={b.kelompok_barang}
-              subCategory={b.subkelompok_barang}
-              price={b.satuan_harga ? formatRupiah(b.satuan_harga) : null}
-              unit={b.satuan_barang}
-              imageUrl={b.image_url}
-              stock={b.stok_saat_ini}
-              onEdit={() => handleEdit(b)}
-              onDelete={() => deleteBarang(b.kode_barang)}
-            />
-          ))}
+        <div className="space-y-21">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
+            {pagedBarang.map(b => (
+              <ItemCard 
+                key={b.kode_barang}
+                itemName={b.nama_barang}
+                itemCode={b.kode_barang}
+                category={b.kelompok_barang}
+                subCategory={b.subkelompok_barang}
+                price={b.satuan_harga ? formatRupiah(b.satuan_harga) : null}
+                unit={b.satuan_barang}
+                imageUrl={b.image_url}
+                stock={b.stok_saat_ini}
+                onEdit={() => handleEdit(b)}
+                onDelete={() => deleteBarang(b.kode_barang)}
+              />
+            ))}
+          </div>
+          <Pagination
+            total={filteredBarang.length}
+            perPage={perPage}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPerPage}
+          />
         </div>
       ) : (
+        <div className="space-y-21">
         <Table headers={['Foto', 'Kode', 'Info Barang', 'Kategori', 'Stok', '']}>
-          {filteredBarang.map(b => (
+          {pagedBarang.map(b => (
             <tr key={b.kode_barang} className="hover:bg-slate-50 transition-colors">
               <td className="px-13 py-13">
                 {b.image_url ? (
@@ -373,6 +393,14 @@ export default function Barang() {
             </tr>
           ))}
         </Table>
+        <Pagination
+          total={filteredBarang.length}
+          perPage={perPage}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPerPageChange={setPerPage}
+        />
+        </div>
       )}
 
       {/* Komponen Kamera Scanner */}

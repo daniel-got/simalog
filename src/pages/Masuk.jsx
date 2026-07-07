@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Plus, Download, LayoutGrid, List, Search, QrCode } from 'lucide-react';
 import useStore from '../store/useStore';
@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import { Table } from '../components/ui/Table';
 import { Input, Select } from '../components/ui/Input';
 import LogCard from '../components/ui/LogCard';
+import Pagination from '../components/ui/Pagination';
 import { KELOMPOK_BARANG } from '../utils/constants';
 
 const EMPTY = { kode_barang: '', jumlah: '', tanggal: new Date().toISOString().split('T')[0], penerima: '' };
@@ -17,10 +18,16 @@ export default function Masuk() {
   const [form, setForm]       = useState(EMPTY);
   const [viewMode, setViewMode] = useState('card');
   
-  // Filter States
   const [filterText, setFilterText] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterKelompok, setFilterKelompok] = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  // Reset ke halaman 1 saat filter berubah
+  useEffect(() => { setCurrentPage(1); }, [filterText, filterDate, filterKelompok]);
 
   const barangOptions = barang.map(b => ({
     label: `${b.kode_barang} — ${b.nama_barang}`,
@@ -30,13 +37,13 @@ export default function Masuk() {
   const filtered = masuk.filter(m => {
     const brg = barang.find(b => b.kode_barang === m.kode_barang) || {};
     const textTarget = (m.kode_barang + m.penerima + (brg.nama_barang || '')).toLowerCase();
-    
     const matchText = textTarget.includes(filterText.toLowerCase());
     const matchDate = filterDate ? m.tanggal === filterDate : true;
     const matchKelompok = filterKelompok ? brg.kelompok_barang === filterKelompok : true;
-    
     return matchText && matchDate && matchKelompok;
   });
+
+  const paged = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -84,7 +91,6 @@ export default function Masuk() {
         </div>
       </div>
 
-      {/* Form */}
       {open && (
         <Card className="border-emerald-200 bg-emerald-50/30 p-21">
           <p className="text-base font-bold text-slate-700 mb-13">📥  Catat Barang Masuk</p>
@@ -155,37 +161,55 @@ export default function Masuk() {
           Tidak ada data transaksi masuk.
         </div>
       ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
-          {filtered.map(m => {
-            const brgInfo = barang.find(b => b.kode_barang === m.kode_barang);
-            return (
-              <LogCard 
-                key={m.id}
-                type="masuk"
-                date={m.tanggal}
-                itemCode={m.kode_barang}
-                itemName={brgInfo?.nama_barang}
-                qty={m.jumlah}
-                receiver={m.penerima}
-              />
-            );
-          })}
+        <div className="space-y-21">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
+            {paged.map(m => {
+              const brgInfo = barang.find(b => b.kode_barang === m.kode_barang);
+              return (
+                <LogCard 
+                  key={m.id}
+                  type="masuk"
+                  date={m.tanggal}
+                  itemCode={m.kode_barang}
+                  itemName={brgInfo?.nama_barang}
+                  qty={m.jumlah}
+                  receiver={m.penerima}
+                />
+              );
+            })}
+          </div>
+          <Pagination
+            total={filtered.length}
+            perPage={perPage}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPerPage}
+          />
         </div>
       ) : (
-        <Table headers={['Tanggal', 'Barang', '+Qty', 'Penerima']}>
-          {filtered.map(m => (
-            <tr key={m.id} className="hover:bg-slate-50 transition-colors">
-              <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{m.tanggal}</td>
-              <td className="px-13 py-13 font-mono text-xs text-teal-700 font-bold">{m.kode_barang}</td>
-              <td className="px-13 py-13">
-                <span className="bg-emerald-100 text-emerald-700 text-xs font-black px-8 py-3 rounded-lg">
-                  +{m.jumlah}
-                </span>
-              </td>
-              <td className="px-13 py-13 text-xs text-slate-600">{m.penerima}</td>
-            </tr>
-          ))}
-        </Table>
+        <div className="space-y-21">
+          <Table headers={['Tanggal', 'Barang', '+Qty', 'Penerima']}>
+            {paged.map(m => (
+              <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{m.tanggal}</td>
+                <td className="px-13 py-13 font-mono text-xs text-teal-700 font-bold">{m.kode_barang}</td>
+                <td className="px-13 py-13">
+                  <span className="bg-emerald-100 text-emerald-700 text-xs font-black px-8 py-3 rounded-lg">
+                    +{m.jumlah}
+                  </span>
+                </td>
+                <td className="px-13 py-13 text-xs text-slate-600">{m.penerima}</td>
+              </tr>
+            ))}
+          </Table>
+          <Pagination
+            total={filtered.length}
+            perPage={perPage}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPerPage}
+          />
+        </div>
       )}
     </div>
   );

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layers3, ArrowUp, ArrowDown, Search, QrCode } from 'lucide-react';
 import useStore from '../store/useStore';
 import Button from '../components/ui/Button';
 import { Select } from '../components/ui/Input';
+import Pagination from '../components/ui/Pagination';
 import { KELOMPOK_BARANG } from '../utils/constants';
 
 export default function Stok() {
@@ -16,6 +17,12 @@ export default function Stok() {
   const [filterKelompok, setFilterKelompok] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [sortOrder, setSortOrder] = useState('stok_desc');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  useEffect(() => { setCurrentPage(1); }, [filterText, filterKelompok, filterStatus, sortOrder]);
 
   const selected = barang.find(b => b.kode_barang === kode);
 
@@ -54,6 +61,8 @@ export default function Stok() {
   };
 
   const barangOptions = barang.map(b => ({ label: `${b.kode_barang} — ${b.nama_barang}`, value: b.kode_barang }));
+
+  const pagedBarang = filteredBarang.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   return (
     <div className="w-full">
@@ -188,24 +197,33 @@ export default function Stok() {
               Tidak ada data barang sesuai pencarian.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-13">
-              {filteredBarang.map(b => (
-                <div key={b.kode_barang} className="bg-white p-13 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:border-teal-200 transition-colors">
-                  <div className="flex items-center gap-13 min-w-0">
-                    <div className={`w-34 h-34 rounded-xl flex items-center justify-center font-black text-xs shrink-0
-                      ${b.stok_saat_ini <= 5 ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-700'}`}>
-                      {b.stok_saat_ini}
+            <div className="space-y-13">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-13">
+                {pagedBarang.map(b => (
+                  <div key={b.kode_barang} className="bg-white p-13 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:border-teal-200 transition-colors">
+                    <div className="flex items-center gap-13 min-w-0">
+                      <div className={`w-34 h-34 rounded-xl flex items-center justify-center font-black text-xs shrink-0
+                        ${b.stok_saat_ini <= 5 ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-700'}`}>
+                        {b.stok_saat_ini}
+                      </div>
+                      <div className="min-w-0 pr-2">
+                        <p className="text-xs font-bold text-slate-800 truncate">{b.nama_barang}</p>
+                        <p className="text-[9px] font-mono text-slate-500 mt-2 truncate">{b.kode_barang}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0 pr-2">
-                      <p className="text-xs font-bold text-slate-800 truncate">{b.nama_barang}</p>
-                      <p className="text-[9px] font-mono text-slate-500 mt-2 truncate">{b.kode_barang}</p>
-                    </div>
+                    {b.stok_saat_ini <= 5 && (
+                      <span className="text-[9px] bg-rose-100 text-rose-600 px-5 py-2 rounded-full font-bold whitespace-nowrap shrink-0">MENIPIS</span>
+                    )}
                   </div>
-                  {b.stok_saat_ini <= 5 && (
-                    <span className="text-[9px] bg-rose-100 text-rose-600 px-5 py-2 rounded-full font-bold whitespace-nowrap shrink-0">MENIPIS</span>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
+              <Pagination
+                total={filteredBarang.length}
+                perPage={perPage}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onPerPageChange={setPerPage}
+              />
             </div>
           )}
         </div>
