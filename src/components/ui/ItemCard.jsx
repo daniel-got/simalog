@@ -16,15 +16,15 @@ export default function ItemCard({
   const isLowStock = stock <= 5;
 
   return (
-    <div className="bg-white p-13 rounded-2xl border border-slate-100 shadow-sm flex gap-13 items-center">
+    <div className="bg-white p-13 lg:p-0 rounded-2xl border border-slate-100 shadow-sm flex flex-row lg:flex-col gap-13 lg:gap-0 items-center lg:items-stretch overflow-hidden group hover:shadow-md transition-shadow">
       
-      {/* Container Gambar (89px x 89px for Fibonacci sizing) */}
-      <div className="w-89 h-89 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+      {/* Container Gambar (89px di mobile, full width x tinggi 144px di desktop) */}
+      <div className="w-89 h-89 lg:w-full lg:h-36 bg-slate-50 rounded-xl lg:rounded-none lg:border-0 lg:border-b border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
         {imageUrl ? (
           <img 
             src={imageUrl} 
             alt={itemName} 
-            className="w-full h-full object-cover" 
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
           />
         ) : (
           <ImageIcon size={21} className="text-slate-300" />
@@ -32,11 +32,11 @@ export default function ItemCard({
       </div>
 
       {/* Container Konten */}
-      <div className="flex-1 min-w-0 flex flex-col justify-between py-2">
+      <div className="flex-1 min-w-0 flex flex-col justify-between py-2 lg:p-13">
         
-        <div>
-          {/* Header: Nama Item & Satuan */}
-          <div className="flex justify-between items-start gap-5">
+        <div className="flex flex-col">
+          {/* Header Mobile: Nama & Stok */}
+          <div className="flex justify-between items-start gap-5 lg:hidden">
             <span className="text-[9px] bg-teal-50 text-teal-700 px-5 py-2 rounded-md font-bold uppercase tracking-wider truncate">
               {itemName}
             </span>
@@ -45,24 +45,32 @@ export default function ItemCard({
             </span>
           </div>
 
-          {/* Kode Barang / SKU */}
-          <h4 className="text-sm font-black text-slate-800 truncate mt-5">
-            {itemCode}
-          </h4>
+          {/* Desktop Name */}
+          <h3 className="hidden lg:block text-sm font-bold text-slate-800 leading-tight truncate mb-2">
+            {itemName}
+          </h3>
 
           {/* Kategori */}
-          <p className="text-[10px] font-medium text-slate-500 truncate mt-2">
+          <p className="text-[10px] font-medium text-slate-500 truncate mt-2 lg:mt-0">
             <span>{category || '-'}</span> <span className="text-slate-300 mx-2">/</span> <span>{subCategory || '-'}</span>
           </p>
+
+          {/* Kode Barang / SKU */}
+          <h4 className="text-sm lg:text-[10px] lg:font-mono font-black text-slate-800 lg:text-slate-400 truncate mt-5 lg:mt-2">
+            {itemCode}
+          </h4>
         </div>
 
         {/* Footer: Harga & Tombol Aksi */}
-        <div className="flex justify-between items-center mt-8 pt-5 border-t border-slate-50">
+        <div className="flex justify-between items-end lg:items-end mt-8 lg:mt-13 pt-5 lg:pt-8 border-t border-slate-50">
           <div className="flex flex-col">
-            <span className="text-xs font-black text-emerald-600">
+            <span className="hidden lg:block text-[10px] font-semibold text-slate-500 mb-3">
+              Sisa Stok: <span className={cn('font-bold', isLowStock ? 'text-rose-500' : 'text-slate-800')}>{stock}</span>
+            </span>
+            <span className="text-xs font-black text-emerald-600 leading-none">
               {price || '-'}
             </span>
-            <span className="text-[9px] text-slate-400 font-medium">
+            <span className="text-[9px] text-slate-400 font-medium mt-1">
               per {unit || 'unit'}
             </span>
           </div>
