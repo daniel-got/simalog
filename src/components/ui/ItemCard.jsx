@@ -17,14 +17,14 @@ export default function ItemCard({
 
   return (
     <div className="bg-white p-13 lg:p-0 rounded-2xl border border-slate-100 shadow-sm flex flex-row lg:flex-col gap-13 lg:gap-0 items-center lg:items-stretch overflow-hidden group hover:shadow-md transition-shadow">
-      
+
       {/* Container Gambar (89px di mobile, full width x tinggi 144px di desktop) */}
       <div className="w-89 h-89 lg:w-full lg:h-36 bg-slate-50 rounded-xl lg:rounded-none lg:border-0 lg:border-b border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
         {imageUrl ? (
-          <img 
-            src={imageUrl} 
-            alt={itemName} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+          <img
+            src={imageUrl}
+            alt={itemName}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <ImageIcon size={21} className="text-slate-300" />
@@ -33,20 +33,20 @@ export default function ItemCard({
 
       {/* Container Konten */}
       <div className="flex-1 min-w-0 flex flex-col justify-between py-2 lg:p-13">
-        
+
         <div className="flex flex-col">
-          {/* Header Mobile: Nama & Stok */}
-          <div className="flex justify-between items-start gap-5 lg:hidden">
-            <span className="text-[9px] bg-teal-50 text-teal-700 px-5 py-2 rounded-md font-bold uppercase tracking-wider truncate">
-              {itemName}
+          {/* Header Mobile: Kode & Stok */}
+          <div className="flex justify-between items-start gap-5 lg:hidden mb-2">
+            <span className="text-[9px] font-mono bg-teal-50 text-teal-700 px-5 py-2 rounded-md font-bold uppercase tracking-wider truncate">
+              {itemCode}
             </span>
             <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap bg-slate-50 px-5 py-2 rounded-md">
               Stok: <span className={cn(isLowStock ? 'text-red-500' : 'text-slate-700')}>{stock}</span>
             </span>
           </div>
 
-          {/* Desktop Name */}
-          <h3 className="hidden lg:block text-sm font-bold text-slate-800 leading-tight truncate mb-2">
+          {/* Name (Tampil di Mobile & Desktop) */}
+          <h3 className="text-sm font-bold text-slate-800 leading-tight truncate mb-2">
             {itemName}
           </h3>
 
@@ -55,8 +55,8 @@ export default function ItemCard({
             <span>{category || '-'}</span> <span className="text-slate-300 mx-2">/</span> <span>{subCategory || '-'}</span>
           </p>
 
-          {/* Kode Barang / SKU */}
-          <h4 className="text-sm lg:text-[10px] lg:font-mono font-black text-slate-800 lg:text-slate-400 truncate mt-5 lg:mt-2">
+          {/* Kode Barang / SKU (Desktop Only) */}
+          <h4 className="hidden lg:block text-[10px] font-mono text-slate-400 truncate mt-2">
             {itemCode}
           </h4>
         </div>
@@ -74,18 +74,18 @@ export default function ItemCard({
               per {unit || 'unit'}
             </span>
           </div>
-          
+
           <div className="flex gap-5">
-            <button 
+            <button
               onClick={onEdit}
-              className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+              className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center"
               title="Edit"
             >
               <Pencil size={13} strokeWidth={2.5} />
             </button>
-            <button 
+            <button
               onClick={onDelete}
-              className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+              className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center"
               title="Hapus"
             >
               <Trash2 size={13} strokeWidth={2.5} />
