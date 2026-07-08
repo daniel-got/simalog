@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Boxes, ShieldCheck, User } from 'lucide-react';
 import AppLayout from './components/layout/AppLayout';
 import useStore from './store/useStore';
+import { supabase } from './lib/supabase';
 
 import Utama  from './pages/Utama';
 import Barang from './pages/Barang';
@@ -108,6 +109,50 @@ function Login() {
 
 export default function App() {
   const currentUser = useStore(s => s.currentUser);
+  const logout = useStore(s => s.logout);
+
+  useEffect(() => {
+    // Sinkronisasi sesi Supabase dengan Zustand
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        logout();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [logout]);
+
+  useEffect(() => {
+    // Auto logout jika tidak ada aktivitas selama 1 jam
+    if (!currentUser) return;
+
+    let timeoutId;
+    const INACTIVITY_TIME = 60 * 60 * 1000; // 1 Jam dalam milidetik
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        // Jika waktu habis, paksa logout
+        alert('Sesi Anda telah habis karena tidak ada aktivitas selama 1 jam. Silakan login kembali.');
+        logout();
+      }, INACTIVITY_TIME);
+    };
+
+    // Event listeners untuk mendeteksi aktivitas pengguna
+    const events = ['mousemove', 'keydown', 'scroll', 'click'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    // Mulai timer saat komponen pertama kali dimuat
+    resetTimer();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [currentUser, logout]);
+
   if (!currentUser) return <Login />;
 
   return (
