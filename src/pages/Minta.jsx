@@ -10,15 +10,15 @@ import Pagination from '../components/ui/Pagination';
 const STATUS_STYLE = {
   Diajukan: 'bg-amber-100 text-amber-700 border-amber-200',
   Disetujui: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  Diterima:  'bg-blue-100 text-blue-700 border-blue-200',
-  Ditolak:   'bg-red-100 text-red-600 border-red-200',
+  Diterima: 'bg-blue-100 text-blue-700 border-blue-200',
+  Ditolak: 'bg-red-100 text-red-600 border-red-200',
 };
 
 const BAR_COLOR = {
   Diajukan: 'bg-amber-400',
   Disetujui: 'bg-emerald-500',
-  Diterima:  'bg-blue-500',
-  Ditolak:   'bg-red-400',
+  Diterima: 'bg-blue-500',
+  Ditolak: 'bg-red-400',
 };
 
 const EMPTY = {
@@ -30,10 +30,10 @@ const EMPTY = {
 
 export default function Minta() {
   const { minta, addMinta, updateMinta, deleteMinta, updateMintaStatus, barang, currentUser, addKeluar } = useStore();
-  const [open, setOpen]           = useState(false);
-  const [editId, setEditId]       = useState(null);
-  const [form, setForm]           = useState(EMPTY);
-  
+  const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState(EMPTY);
+
   // Filter States
   const [filterText, setFilterText] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -50,10 +50,10 @@ export default function Minta() {
     .filter(m => {
       const brg = barang.find(b => b.kode_barang === m.kode_barang) || {};
       const textTarget = (m.kode_barang + m.nama_pemohon + (brg.nama_barang || '')).toLowerCase();
-      
+
       const matchText = textTarget.includes(filterText.toLowerCase());
       const matchStatus = filterStatus ? m.status_persetujuan === filterStatus : true;
-      
+
       return matchText && matchStatus;
     })
     .sort((a, b) => new Date(b.tanggal_minta) - new Date(a.tanggal_minta));
@@ -91,6 +91,13 @@ export default function Minta() {
     setEditId(item.id);
     setOpen(true);
   };
+  const handleDelete = (item) => {
+    const brg = barang.find(b => b.kode_barang === item.kode_barang);
+    const namaBarang = brg?.nama_barang || item.kode_barang;
+    if (confirm(`Yakin ingin menghapus permintaan "${namaBarang}" (x${item.jumlah}) oleh ${item.nama_pemohon}?`)) {
+      deleteMinta(item.id);
+    }
+  };
 
   const handleApprove = (item) => {
     const brg = barang.find(b => b.kode_barang === item.kode_barang);
@@ -127,14 +134,14 @@ export default function Minta() {
             {editId ? '✏️ Edit Permintaan' : '📋 Buat Permintaan Baru'}
           </p>
           <form onSubmit={handleSubmit} className="space-y-13">
-            <Input label="Nama Pemohon" required 
-              value={form.nama_pemohon} 
-              onChange={e => setForm({ ...form, nama_pemohon: e.target.value })} 
+            <Input label="Nama Pemohon" required
+              value={form.nama_pemohon}
+              onChange={e => setForm({ ...form, nama_pemohon: e.target.value })}
             />
-            <SearchableSelect 
+            <SearchableSelect
               label="Barang" required options={barangOptions}
               value={form.kode_barang}
-              onChange={e => setForm({ ...form, kode_barang: e.target.value })} 
+              onChange={e => setForm({ ...form, kode_barang: e.target.value })}
             />
             <div className="grid grid-cols-2 gap-13">
               <Input label="Jumlah" type="number" required min="1"
@@ -157,8 +164,8 @@ export default function Minta() {
         <div className="flex gap-8">
           <div className="relative flex-1">
             <Search size={14} className="absolute left-13 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Cari nama barang, kode, atau pemohon..."
               value={filterText}
               onChange={e => setFilterText(e.target.value)}
@@ -169,9 +176,9 @@ export default function Minta() {
             <QrCode size={16} />
           </button>
         </div>
-        
+
         <div>
-          <select 
+          <select
             className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-600 font-medium"
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
@@ -194,7 +201,7 @@ export default function Minta() {
             </div>
           ) : paged.map(m => {
             const brgInfo = barang.find(b => b.kode_barang === m.kode_barang);
-            const status  = m.status_persetujuan;
+            const status = m.status_persetujuan;
             return (
               <div key={m.id}
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -243,16 +250,15 @@ export default function Minta() {
                             </button>
                           </div>
                         )}
-                        
+
                         <div className="flex gap-5">
                           <button onClick={() => handleEdit(m)}
                             className="w-21 h-21 rounded-[8px] bg-blue-50 text-blue-500 flex items-center justify-center
                               hover:bg-blue-100 active:scale-95 transition-all" title="Edit">
                             <Pencil size={12} strokeWidth={2.5} />
                           </button>
-                          <button onClick={() => deleteMinta(m.id)}
-                            className="w-21 h-21 rounded-[8px] bg-rose-50 text-rose-500 flex items-center justify-center
-                              hover:bg-rose-100 active:scale-95 transition-all" title="Hapus">
+                          <button onClick={() => handleDelete(m)}
+                            className="w-21 h-21 rounded-[8px] bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 active:scale-95 transition-all" title="Hapus">
                             <Trash2 size={12} strokeWidth={2.5} />
                           </button>
                         </div>

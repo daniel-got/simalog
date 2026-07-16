@@ -5,28 +5,28 @@ import AppLayout from './components/layout/AppLayout';
 import useStore from './store/useStore';
 import { supabase } from './lib/supabase';
 
-import Utama  from './pages/Utama';
+import Utama from './pages/Utama';
 import Barang from './pages/Barang';
-import Masuk  from './pages/Masuk';
+import Masuk from './pages/Masuk';
 import Keluar from './pages/Keluar';
-import Stok   from './pages/Stok';
-import Minta  from './pages/Minta';
+import Stok from './pages/Stok';
+import Minta from './pages/Minta';
 import DetailBarang from './pages/DetailBarang';
 
 function Login() {
   const loginWithEmail = useStore(s => s.loginWithEmail);
-  const loginAsGuest   = useStore(s => s.loginAsGuest);
-  
-  const [email, setEmail]       = useState('');
+  const loginAsGuest = useStore(s => s.loginAsGuest);
+
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     const { success, error: errMsg } = await loginWithEmail(email, password);
     if (!success) {
       setError(errMsg || 'Kredensial tidak valid');
@@ -61,26 +61,26 @@ function Login() {
               {error}
             </div>
           )}
-          
-          <input 
-            type="email" 
-            placeholder="Email Admin" 
+
+          <input
+            type="email"
+            placeholder="Email Admin"
             required
             value={email}
             onChange={e => setEmail(e.target.value)}
             className="w-full px-13 py-13 rounded-2xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
-          <input 
-            type="password" 
-            placeholder="Password" 
+          <input
+            type="password"
+            placeholder="Password"
             required
             value={password}
             onChange={e => setPassword(e.target.value)}
             className="w-full px-13 py-13 rounded-2xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             disabled={loading}
             className="w-full flex items-center justify-center gap-8 p-13 rounded-2xl bg-teal-600 text-white font-bold
               hover:bg-teal-700 active:scale-95 transition-all shadow-md shadow-teal-500/30 disabled:opacity-50"
@@ -112,17 +112,22 @@ export default function App() {
   const logout = useStore(s => s.logout);
 
   useEffect(() => {
-    // Sinkronisasi sesi Supabase dengan Zustand
+    // Sinkronisasi sesi Supabase dengan Zustand.
+    // PENTING: reset state (currentUser, barang, masuk, keluar, minta) dilakukan
+    // LANGSUNG DI SINI lewat useStore.setState(), BUKAN dengan memanggil logout()
+    // dari store. Ini untuk mencegah circular call: logout() -> signOut() -> event
+    // SIGNED_OUT -> logout() lagi -> signOut() lagi -> ... (infinite loop yang
+    // menyebabkan browser hang / "This page isn't responding").
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
-        logout();
+        useStore.setState({ currentUser: null, barang: [], masuk: [], keluar: [], minta: [] });
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [logout]);
+  }, []);
 
   useEffect(() => {
     // Auto logout jika tidak ada aktivitas selama 1 jam
@@ -163,9 +168,9 @@ export default function App() {
           {currentUser.role === 'Admin' && (
             <>
               <Route path="barang" element={<Barang />} />
-              <Route path="masuk"  element={<Masuk />} />
+              <Route path="masuk" element={<Masuk />} />
               <Route path="keluar" element={<Keluar />} />
-              <Route path="stok"   element={<Stok />} />
+              <Route path="stok" element={<Stok />} />
             </>
           )}
           <Route path="minta" element={<Minta />} />

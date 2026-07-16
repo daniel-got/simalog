@@ -8,10 +8,10 @@ import { KELOMPOK_BARANG } from '../utils/constants';
 
 export default function Stok() {
   const { barang, addMasuk, addKeluar } = useStore();
-  const [kode, setKode]   = useState('');
+  const [kode, setKode] = useState('');
   const [jenis, setJenis] = useState('masuk');
   const [jumlah, setJumlah] = useState('');
-  
+
   // Filter States
   const [filterText, setFilterText] = useState('');
   const [filterKelompok, setFilterKelompok] = useState('');
@@ -31,25 +31,40 @@ export default function Stok() {
       const textTarget = ((b.nama_barang || '') + (b.kode_barang || '')).toLowerCase();
       const matchText = textTarget.includes(filterText.toLowerCase());
       const matchKelompok = filterKelompok ? b.kelompok_barang === filterKelompok : true;
-      const matchStatus = filterStatus === 'Menipis' ? b.stok_saat_ini <= 5 
-                        : filterStatus === 'Normal' ? b.stok_saat_ini > 5 
-                        : true;
+      const matchStatus = filterStatus === 'Menipis' ? b.stok_saat_ini <= 5
+        : filterStatus === 'Normal' ? b.stok_saat_ini > 5
+          : true;
       return matchText && matchKelompok && matchStatus;
     })
     .sort((a, b) => {
       if (sortOrder === 'stok_desc') return b.stok_saat_ini - a.stok_saat_ini;
-      if (sortOrder === 'stok_asc')  return a.stok_saat_ini - b.stok_saat_ini;
-      if (sortOrder === 'nama_asc')  return (a.nama_barang || '').localeCompare(b.nama_barang || '');
+      if (sortOrder === 'stok_asc') return a.stok_saat_ini - b.stok_saat_ini;
+      if (sortOrder === 'nama_asc') return (a.nama_barang || '').localeCompare(b.nama_barang || '');
       if (sortOrder === 'nama_desc') return (b.nama_barang || '').localeCompare(a.nama_barang || '');
       return 0;
     });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!kode || !jumlah || jumlah <= 0) return;
-    if (jenis === 'keluar' && selected?.stok_saat_ini < jumlah) {
-      alert('Stok tidak mencukupi!'); return;
+
+    // Validasi: barang harus dipilih
+    if (!kode || !selected) {
+      alert('Pilih barang terlebih dahulu!');
+      return;
     }
+
+    // Validasi: jumlah harus diisi dan lebih dari 0
+    if (!jumlah || Number(jumlah) <= 0) {
+      alert('Jumlah harus lebih dari 0!');
+      return;
+    }
+
+    // Validasi: kalau jenis keluar, stok harus cukup
+    if (jenis === 'keluar' && selected.stok_saat_ini < Number(jumlah)) {
+      alert(`Stok tidak mencukupi! Sisa yang tersedia: ${selected.stok_saat_ini}`);
+      return;
+    }
+
     const payload = {
       kode_barang: kode, jumlah: Number(jumlah),
       tanggal: new Date().toISOString().split('T')[0],
@@ -59,6 +74,7 @@ export default function Stok() {
     alert('Stok berhasil disesuaikan!');
     setKode(''); setJumlah('');
   };
+
 
   const barangOptions = barang.map(b => ({ label: `${b.kode_barang} — ${b.nama_barang}`, value: b.kode_barang }));
 
@@ -74,7 +90,7 @@ export default function Stok() {
 
       {/* Layout Berubah di Desktop (lg:) */}
       <div className="flex flex-col lg:flex-row gap-21 lg:gap-34">
-        
+
         {/* BAGIAN KIRI: Form Penyesuaian (Lebar 1/3 di desktop) */}
         <div className="w-full lg:w-1/3 shrink-0">
           {/* Form Card */}
@@ -136,14 +152,14 @@ export default function Stok() {
           {/* Header Daftar Stok & Filter */}
           <div className="mb-13">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-8">Daftar Stok</h3>
-            
+
             {/* Search & Filter Card */}
             <div className="bg-white p-13 rounded-2xl border border-slate-200 shadow-sm space-y-8">
               <div className="flex gap-8">
                 <div className="relative flex-1">
                   <Search size={14} className="absolute left-13 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Cari kode atau nama barang..."
                     value={filterText}
                     onChange={e => setFilterText(e.target.value)}
@@ -154,9 +170,9 @@ export default function Stok() {
                   <QrCode size={16} />
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-3 gap-8">
-                <select 
+                <select
                   className="w-full px-8 py-8 text-[10px] bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
                   value={filterKelompok}
                   onChange={e => setFilterKelompok(e.target.value)}
@@ -166,8 +182,8 @@ export default function Stok() {
                     <option key={k} value={k}>{k}</option>
                   ))}
                 </select>
-                
-                <select 
+
+                <select
                   className="w-full px-8 py-8 text-[10px] bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
                   value={filterStatus}
                   onChange={e => setFilterStatus(e.target.value)}
@@ -177,7 +193,7 @@ export default function Stok() {
                   <option value="Menipis">Menipis (≤ 5)</option>
                 </select>
 
-                <select 
+                <select
                   className="w-full px-8 py-8 text-[10px] bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
                   value={sortOrder}
                   onChange={e => setSortOrder(e.target.value)}

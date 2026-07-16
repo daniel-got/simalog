@@ -2,214 +2,36 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 
+import createAuthSlice from './auth';
+import createBarangSlice from './barang';
+import createMasukSlice from './masuk';
+import createKeluarSlice from './keluar';
+import createMintaSlice from './minta';
+
 const useStore = create(
   persist(
     (set, get) => ({
-      currentUser: null,
-  
-  // Login Admin menggunakan Supabase Auth (Email & Password)
-  loginWithEmail: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error("Login Error:", error);
-      return { success: false, error: error.message };
-    }
-    
-    if (data?.user) {
-      // Karena ini Hybrid, yang berhasil login email PASTI adalah Admin.
-      set({ currentUser: { id: data.user.id, nama: 'Administrator', role: 'Admin' } });
-      get().fetchData();
-      return { success: true };
-    }
-    return { success: false, error: 'Unknown error' };
-  },
+      ...createAuthSlice(set, get),
+      ...createBarangSlice(set, get),
+      ...createMasukSlice(set, get),
+      ...createKeluarSlice(set, get),
+      ...createMintaSlice(set, get),
 
-  // Login Guest lokal (tanpa password, role User)
-  loginAsGuest: () => {
-    set({ currentUser: { id: '00000000-0000-0000-0000-000000000000', nama: 'Guest (Pegawai)', role: 'User' } });
-    get().fetchData();
-  },
-  
-  logout: async () => {
-    await supabase.auth.signOut();
-    set({ currentUser: null, barang: [], masuk: [], keluar: [], minta: [] });
-  },
+      // Fetch all data
+      fetchData: async () => {
+        const [bRes, lRes, pRes] = await Promise.all([
+          supabase.from('barang').select('*').order('created_at', { ascending: false }),
+          supabase.from('log_transaksi').select('*').order('created_at', { ascending: false }),
+          supabase.from('permintaan').select('*').order('created_at', { ascending: false })
+        ]);
 
-  // Data State
-  barang: [],
-  masuk: [],
-  keluar: [],
-  minta: [],
-
-  // Fetch all data
-  fetchData: async () => {
-    const [bRes, lRes, pRes] = await Promise.all([
-      supabase.from('barang').select('*').order('created_at', { ascending: false }),
-      supabase.from('log_transaksi').select('*').order('created_at', { ascending: false }),
-      supabase.from('permintaan').select('*').order('created_at', { ascending: false })
-    ]);
-    
-    set({
-      barang: bRes.data || [],
-      masuk: (lRes.data || []).filter(l => l.jenis_transaksi === 'Masuk'),
-      keluar: (lRes.data || []).filter(l => l.jenis_transaksi === 'Keluar'),
-      minta: pRes.data || []
-    });
-  },
-
-  // Barang Actions
-  addBarang: async (item) => {
-    const { data, error } = await supabase.from('barang').insert([item]).select();
-    if (error) {
-      console.error(error);
-      alert('Gagal menambah barang: ' + error.message);
-    } else if (data) {
-      set((state) => ({ barang: [data[0], ...state.barang] }));
-    }
-  },
-  updateBarang: async (kode, updatedItem) => {
-    const { data, error } = await supabase.from('barang').update(updatedItem).eq('kode_barang', kode).select();
-    if (error) console.error(error);
-    else if (data) {
-      set((state) => ({
-        barang: state.barang.map(b => b.kode_barang === kode ? data[0] : b)
-      }));
-    }
-  },
-  deleteBarang: async (kode) => {
-    const { error } = await supabase.from('barang').delete().eq('kode_barang', kode);
-    if (error) {
-      alert('Gagal menghapus barang');
-    } else {
-      set((state) => ({ barang: state.barang.filter(b => b.kode_barang !== kode) }));
-    }
-  },
-
-  // Transaksi Actions
-  addMasuk: async (item) => {
-    const payload = {
-      kode_barang: item.kode_barang,
-      jenis_transaksi: 'Masuk',
-      jumlah: parseInt(item.jumlah),
-      tanggal: item.tanggal,
-      penerima: item.penerima
-    };
-    const { data, error } = await supabase.from('log_transaksi').insert([payload]).select();
-    if (error) { alert('Gagal catat masuk: ' + error.message); return; }
-    
-    if (data) {
-      const brg = get().barang.find(b => b.kode_barang === item.kode_barang);
-      if (brg) {
-        await supabase.from('barang')
-          .update({ stok_saat_ini: brg.stok_saat_ini + payload.jumlah })
-          .eq('kode_barang', brg.kode_barang);
-      }
-      get().fetchData();
-    }
-  },
-
-  addKeluar: async (item) => {
-    const payload = {
-      kode_barang: item.kode_barang,
-      jenis_transaksi: 'Keluar',
-      jumlah: parseInt(item.jumlah),
-      tanggal: item.tanggal,
-      penerima: item.penerima
-    };
-    const { data, error } = await supabase.from('log_transaksi').insert([payload]).select();
-    if (error) { alert('Gagal catat keluar: ' + error.message); return; }
-    
-    if (data) {
-      const brg = get().barang.find(b => b.kode_barang === item.kode_barang);
-      if (brg) {
-        await supabase.from('barang')
-          .update({ stok_saat_ini: brg.stok_saat_ini - payload.jumlah })
-          .eq('kode_barang', brg.kode_barang);
-      }
-      get().fetchData();
-    }
-  },
-
-  updateLogTransaksi: async (id, oldItem, newItem) => {
-    // 1. Revert efek stok lama
-    const oldBarang = get().barang.find(b => b.kode_barang === oldItem.kode_barang);
-    if (oldBarang) {
-      const revertQty = oldItem.jenis_transaksi === 'Masuk' 
-        ? oldBarang.stok_saat_ini - oldItem.jumlah 
-        : oldBarang.stok_saat_ini + oldItem.jumlah;
-      await supabase.from('barang').update({ stok_saat_ini: revertQty }).eq('kode_barang', oldBarang.kode_barang);
-    }
-
-    // Ambil data barang terbaru setelah revert
-    const { data: latestBarang } = await supabase.from('barang').select('*');
-
-    // 2. Apply efek stok baru
-    const newBarang = latestBarang?.find(b => b.kode_barang === newItem.kode_barang);
-    if (newBarang) {
-      const newQty = parseInt(newItem.jumlah);
-      const applyQty = oldItem.jenis_transaksi === 'Masuk' 
-        ? newBarang.stok_saat_ini + newQty 
-        : newBarang.stok_saat_ini - newQty;
-      await supabase.from('barang').update({ stok_saat_ini: applyQty }).eq('kode_barang', newBarang.kode_barang);
-    }
-
-    // 3. Update log
-    const payload = {
-      kode_barang: newItem.kode_barang,
-      jumlah: parseInt(newItem.jumlah),
-      tanggal: newItem.tanggal,
-      penerima: newItem.penerima,
-    };
-    const { error } = await supabase.from('log_transaksi').update(payload).eq('id', id);
-    if (error) alert('Gagal update log: ' + error.message);
-    
-    get().fetchData();
-  },
-
-  deleteLogTransaksi: async (id, item) => {
-    // 1. Revert efek stok
-    const brg = get().barang.find(b => b.kode_barang === item.kode_barang);
-    if (brg) {
-      const revertQty = item.jenis_transaksi === 'Masuk' 
-        ? brg.stok_saat_ini - item.jumlah 
-        : brg.stok_saat_ini + item.jumlah;
-      await supabase.from('barang').update({ stok_saat_ini: revertQty }).eq('kode_barang', brg.kode_barang);
-    }
-
-    // 2. Delete log
-    const { error } = await supabase.from('log_transaksi').delete().eq('id', id);
-    if (error) alert('Gagal hapus log: ' + error.message);
-    
-    get().fetchData();
-  },
-
-  // Permintaan Actions
-  addMinta: async (item) => {
-    const { error } = await supabase.from('permintaan').insert([item]);
-    if (error) alert('Gagal minta barang: ' + error.message);
-    else get().fetchData();
-  },
-  updateMintaStatus: async (id, status) => {
-    const { error } = await supabase.from('permintaan')
-      .update({ status_persetujuan: status })
-      .eq('id', id);
-    if (error) alert('Gagal update status: ' + error.message);
-    else get().fetchData();
-  },
-  updateMinta: async (id, updatedItem) => {
-    const { error } = await supabase.from('permintaan')
-      .update(updatedItem)
-      .eq('id', id);
-    if (error) alert('Gagal update permintaan: ' + error.message);
-    else get().fetchData();
-  },
-  deleteMinta: async (id) => {
-    const { error } = await supabase.from('permintaan')
-      .delete()
-      .eq('id', id);
-    if (error) alert('Gagal hapus permintaan: ' + error.message);
-    else get().fetchData();
-  },
+        set({
+          barang: bRes.data || [],
+          masuk: (lRes.data || []).filter(l => l.jenis_transaksi === 'Masuk'),
+          keluar: (lRes.data || []).filter(l => l.jenis_transaksi === 'Keluar'),
+          minta: pRes.data || []
+        });
+      },
     }),
     {
       name: 'simalog-auth-storage', // Key di localStorage
