@@ -2,31 +2,46 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Boxes, ShieldCheck, User } from 'lucide-react';
 import AppLayout from './components/layout/AppLayout';
-import useStore from './store/useStore';
 import { supabase } from './lib/supabase';
 
-import Utama  from './pages/Utama';
-import Barang from './pages/Barang';
-import Masuk  from './pages/Masuk';
-import Keluar from './pages/Keluar';
-import Stok   from './pages/Stok';
-import Minta  from './pages/Minta';
-import DetailBarang from './pages/DetailBarang';
+// PERUBAHAN 1: Arahkan import ke useLogistikStore baru
+import useLogistikStore from './store/Logistik/useLogistikStore';
+import useHartaBendaStore from './store/HartaBenda/useHartaBendaStore'; // Untuk mereset data aset saat logout
+
+import Utama from './pages/Utama';
+
+// PERBAIKAN DI SINI: Sesuaikan jalur import karena filenya sudah pindah ke folder Logistik
+import Barang from './pages/Logistik/Barang';
+import Masuk from './pages/Logistik/Masuk';
+import Keluar from './pages/Logistik/Keluar';
+import Stok from './pages/Logistik/Stok';
+import Minta from './pages/Logistik/Minta';
+import DetailBarang from './pages/Logistik/DetailBarang';
+
+// Halaman Harta Benda
+import UtamaAset from './pages/HartaBenda/UtamaAset';
+import DaftarAset from './pages/HartaBenda/DaftarAset';
+import Perawatan from './pages/HartaBenda/Perawatan';
+import Aktivitas from './pages/HartaBenda/Aktivitas';
+import DetailAset from './pages/HartaBenda/DetailAset';
+import PinjamAsetGuest from './pages/HartaBenda/PinjamAsetGuest';
+import LaporRusakGuest from './pages/HartaBenda/LaporRusakGuest';
 
 function Login() {
-  const loginWithEmail = useStore(s => s.loginWithEmail);
-  const loginAsGuest   = useStore(s => s.loginAsGuest);
-  
-  const [email, setEmail]       = useState('');
+  // PERUBAHAN 2: Gunakan useLogistikStore untuk aksi Login
+  const loginWithEmail = useLogistikStore(s => s.loginWithEmail);
+  const loginAsGuest = useLogistikStore(s => s.loginAsGuest);
+
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     const { success, error: errMsg } = await loginWithEmail(email, password);
     if (!success) {
       setError(errMsg || 'Kredensial tidak valid');
@@ -35,9 +50,7 @@ function Login() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center
-      bg-gradient-to-br from-teal-50 via-white to-slate-100 p-21">
-
+    <div className="min-h-dvh flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 via-white to-slate-100 p-21">
       {/* Brand mark */}
       <div className="flex flex-col items-center gap-13 mb-34">
         <div className="w-55 h-55 rounded-[21px] bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
@@ -61,29 +74,28 @@ function Login() {
               {error}
             </div>
           )}
-          
-          <input 
-            type="email" 
-            placeholder="Email Admin" 
+
+          <input
+            type="email"
+            placeholder="Email Admin"
             required
             value={email}
             onChange={e => setEmail(e.target.value)}
             className="w-full px-13 py-13 rounded-2xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
-          <input 
-            type="password" 
-            placeholder="Password" 
+          <input
+            type="password"
+            placeholder="Password"
             required
             value={password}
             onChange={e => setPassword(e.target.value)}
             className="w-full px-13 py-13 rounded-2xl border border-slate-200 bg-slate-50 text-sm focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-8 p-13 rounded-2xl bg-teal-600 text-white font-bold
-              hover:bg-teal-700 active:scale-95 transition-all shadow-md shadow-teal-500/30 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-8 p-13 rounded-2xl bg-teal-600 text-white font-bold hover:bg-teal-700 active:scale-95 transition-all shadow-md shadow-teal-500/30 disabled:opacity-50"
           >
             {loading ? 'Memvalidasi...' : (
               <>
@@ -108,43 +120,43 @@ function Login() {
 }
 
 export default function App() {
-  const currentUser = useStore(s => s.currentUser);
-  const logout = useStore(s => s.logout);
+  // PERUBAHAN 3: Ambil session dan fungsi logout dari useLogistikStore
+  const currentUser = useLogistikStore(s => s.currentUser);
+  const logout = useLogistikStore(s => s.logout);
 
   useEffect(() => {
-    // Sinkronisasi sesi Supabase dengan Zustand
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
-        logout();
+        // PERUBAHAN 4: Reset state logistik di useLogistikStore
+        useLogistikStore.setState({ currentUser: null, barang: [], masuk: [], keluar: [], minta: [] });
+
+        // TAMBAHAN: Bersihkan juga state aset di store sebelah saat Admin logout
+        useHartaBendaStore.setState({ daftarAset: [], aset: [], logPerawatan: [], logAktivitas: [] });
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [logout]);
+  }, []);
 
   useEffect(() => {
-    // Auto logout jika tidak ada aktivitas selama 1 jam
     if (!currentUser) return;
 
     let timeoutId;
-    const INACTIVITY_TIME = 60 * 60 * 1000; // 1 Jam dalam milidetik
+    const INACTIVITY_TIME = 60 * 60 * 1000; // 1 Jam
 
     const resetTimer = () => {
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        // Jika waktu habis, paksa logout
         alert('Sesi Anda telah habis karena tidak ada aktivitas selama 1 jam. Silakan login kembali.');
         logout();
       }, INACTIVITY_TIME);
     };
 
-    // Event listeners untuk mendeteksi aktivitas pengguna
     const events = ['mousemove', 'keydown', 'scroll', 'click'];
     events.forEach(event => window.addEventListener(event, resetTimer));
 
-    // Mulai timer saat komponen pertama kali dimuat
     resetTimer();
 
     return () => {
@@ -163,13 +175,33 @@ export default function App() {
           {currentUser.role === 'Admin' && (
             <>
               <Route path="barang" element={<Barang />} />
-              <Route path="masuk"  element={<Masuk />} />
+              <Route path="masuk" element={<Masuk />} />
               <Route path="keluar" element={<Keluar />} />
-              <Route path="stok"   element={<Stok />} />
+              <Route path="stok" element={<Stok />} />
             </>
           )}
           <Route path="minta" element={<Minta />} />
           <Route path="barang/:kode" element={<DetailBarang />} />
+
+          {/* Route Harta Benda — hanya untuk Admin */}
+          {currentUser.role === 'Admin' && (
+            <>
+              <Route path="aset" element={<UtamaAset />} />
+              <Route path="aset/daftar" element={<DaftarAset />} />
+              <Route path="aset/perawatan" element={<Perawatan />} />
+              <Route path="aset/aktivitas" element={<Aktivitas />} />
+              <Route path="harta-benda/aset/:id" element={<DetailAset />} />
+            </>
+          )}
+
+          {/* Route Harta Benda — untuk Guest/User */}
+          {(currentUser.role === 'User' || currentUser.role?.toLowerCase() === 'guest') && (
+            <>
+              <Route path="harta-benda/pinjam" element={<PinjamAsetGuest />} />
+              <Route path="harta-benda/lapor" element={<LaporRusakGuest />} />
+            </>
+          )}
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
