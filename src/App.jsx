@@ -2,20 +2,35 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Boxes, ShieldCheck, User } from 'lucide-react';
 import AppLayout from './components/layout/AppLayout';
-import useStore from './store/useStore';
 import { supabase } from './lib/supabase';
 
+// PERUBAHAN 1: Arahkan import ke useLogistikStore baru
+import useLogistikStore from './store/Logistik/useLogistikStore';
+import useHartaBendaStore from './store/HartaBenda/useHartaBendaStore'; // Untuk mereset data aset saat logout
+
 import Utama from './pages/Utama';
-import Barang from './pages/Barang';
-import Masuk from './pages/Masuk';
-import Keluar from './pages/Keluar';
-import Stok from './pages/Stok';
-import Minta from './pages/Minta';
-import DetailBarang from './pages/DetailBarang';
+
+// PERBAIKAN DI SINI: Sesuaikan jalur import karena filenya sudah pindah ke folder Logistik
+import Barang from './pages/Logistik/Barang';
+import Masuk from './pages/Logistik/Masuk';
+import Keluar from './pages/Logistik/Keluar';
+import Stok from './pages/Logistik/Stok';
+import Minta from './pages/Logistik/Minta';
+import DetailBarang from './pages/Logistik/DetailBarang';
+
+// Halaman Harta Benda
+import UtamaAset from './pages/HartaBenda/UtamaAset';
+import DaftarAset from './pages/HartaBenda/DaftarAset';
+import Perawatan from './pages/HartaBenda/Perawatan';
+import Aktivitas from './pages/HartaBenda/Aktivitas';
+import DetailAset from './pages/HartaBenda/DetailAset';
+import PinjamAsetGuest from './pages/HartaBenda/PinjamAsetGuest';
+import LaporRusakGuest from './pages/HartaBenda/LaporRusakGuest';
 
 function Login() {
-  const loginWithEmail = useStore(s => s.loginWithEmail);
-  const loginAsGuest = useStore(s => s.loginAsGuest);
+  // PERUBAHAN 2: Gunakan useLogistikStore untuk aksi Login
+  const loginWithEmail = useLogistikStore(s => s.loginWithEmail);
+  const loginAsGuest = useLogistikStore(s => s.loginAsGuest);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,9 +50,7 @@ function Login() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center
-      bg-gradient-to-br from-teal-50 via-white to-slate-100 p-21">
-
+    <div className="min-h-dvh flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 via-white to-slate-100 p-21">
       {/* Brand mark */}
       <div className="flex flex-col items-center gap-13 mb-34">
         <div className="w-55 h-55 rounded-[21px] bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
@@ -82,8 +95,7 @@ function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-8 p-13 rounded-2xl bg-teal-600 text-white font-bold
-              hover:bg-teal-700 active:scale-95 transition-all shadow-md shadow-teal-500/30 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-8 p-13 rounded-2xl bg-teal-600 text-white font-bold hover:bg-teal-700 active:scale-95 transition-all shadow-md shadow-teal-500/30 disabled:opacity-50"
           >
             {loading ? 'Memvalidasi...' : (
               <>
@@ -108,19 +120,18 @@ function Login() {
 }
 
 export default function App() {
-  const currentUser = useStore(s => s.currentUser);
-  const logout = useStore(s => s.logout);
+  // PERUBAHAN 3: Ambil session dan fungsi logout dari useLogistikStore
+  const currentUser = useLogistikStore(s => s.currentUser);
+  const logout = useLogistikStore(s => s.logout);
 
   useEffect(() => {
-    // Sinkronisasi sesi Supabase dengan Zustand.
-    // PENTING: reset state (currentUser, barang, masuk, keluar, minta) dilakukan
-    // LANGSUNG DI SINI lewat useStore.setState(), BUKAN dengan memanggil logout()
-    // dari store. Ini untuk mencegah circular call: logout() -> signOut() -> event
-    // SIGNED_OUT -> logout() lagi -> signOut() lagi -> ... (infinite loop yang
-    // menyebabkan browser hang / "This page isn't responding").
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
-        useStore.setState({ currentUser: null, barang: [], masuk: [], keluar: [], minta: [] });
+        // PERUBAHAN 4: Reset state logistik di useLogistikStore
+        useLogistikStore.setState({ currentUser: null, barang: [], masuk: [], keluar: [], minta: [] });
+
+        // TAMBAHAN: Bersihkan juga state aset di store sebelah saat Admin logout
+        useHartaBendaStore.setState({ daftarAset: [], aset: [], logPerawatan: [], logAktivitas: [] });
       }
     });
 
@@ -130,26 +141,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Auto logout jika tidak ada aktivitas selama 1 jam
     if (!currentUser) return;
 
     let timeoutId;
-    const INACTIVITY_TIME = 60 * 60 * 1000; // 1 Jam dalam milidetik
+    const INACTIVITY_TIME = 60 * 60 * 1000; // 1 Jam
 
     const resetTimer = () => {
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        // Jika waktu habis, paksa logout
         alert('Sesi Anda telah habis karena tidak ada aktivitas selama 1 jam. Silakan login kembali.');
         logout();
       }, INACTIVITY_TIME);
     };
 
-    // Event listeners untuk mendeteksi aktivitas pengguna
     const events = ['mousemove', 'keydown', 'scroll', 'click'];
     events.forEach(event => window.addEventListener(event, resetTimer));
 
-    // Mulai timer saat komponen pertama kali dimuat
     resetTimer();
 
     return () => {
@@ -175,6 +182,26 @@ export default function App() {
           )}
           <Route path="minta" element={<Minta />} />
           <Route path="barang/:kode" element={<DetailBarang />} />
+
+          {/* Route Harta Benda — hanya untuk Admin */}
+          {currentUser.role === 'Admin' && (
+            <>
+              <Route path="aset" element={<UtamaAset />} />
+              <Route path="aset/daftar" element={<DaftarAset />} />
+              <Route path="aset/perawatan" element={<Perawatan />} />
+              <Route path="aset/aktivitas" element={<Aktivitas />} />
+              <Route path="harta-benda/aset/:id" element={<DetailAset />} />
+            </>
+          )}
+
+          {/* Route Harta Benda — untuk Guest/User */}
+          {(currentUser.role === 'User' || currentUser.role?.toLowerCase() === 'guest') && (
+            <>
+              <Route path="harta-benda/pinjam" element={<PinjamAsetGuest />} />
+              <Route path="harta-benda/lapor" element={<LaporRusakGuest />} />
+            </>
+          )}
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

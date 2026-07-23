@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Layers3, ArrowUp, ArrowDown, Search, QrCode } from 'lucide-react';
-import useStore from '../store/useStore';
-import Button from '../components/ui/Button';
-import { Select } from '../components/ui/Input';
-import Pagination from '../components/ui/Pagination';
-import { KELOMPOK_BARANG } from '../utils/constants';
+import useLogistikStore from '../../store/Logistik/useLogistikStore';
+import Button from '../../components/ui/Button';
+import { Select } from '../../components/ui/Input';
+import Pagination from '../../components/ui/Pagination';
+import { KELOMPOK_BARANG } from '../../utils/constants';
 
 export default function Stok() {
-  const { barang, addMasuk, addKeluar } = useStore();
+  const { barang, addMasuk, addKeluar } = useLogistikStore();
   const [kode, setKode] = useState('');
   const [jenis, setJenis] = useState('masuk');
   const [jumlah, setJumlah] = useState('');

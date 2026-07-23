@@ -1,10 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, Box, LogIn, LogOut, Image as ImageIcon } from 'lucide-react';
-import useStore from '../store/useStore';
-import Button from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Table } from '../components/ui/Table';
-import { cn } from '../utils/cn';
+import { ArrowLeft, Package, LogIn, LogOut, Image as ImageIcon } from 'lucide-react';
+// PERUBAHAN DI SINI: Mengarahkan impor ke useLogistikStore baru dengan path mundur 2 tingkat
+import useStore from '../../store/Logistik/useLogistikStore';
+import Button from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Table } from '../../components/ui/Table';
+import { cn } from '../../utils/cn';
 
 export default function DetailBarang() {
   const { kode } = useParams();
@@ -26,22 +27,22 @@ export default function DetailBarang() {
   const logMasuk = masuk
     .filter(m => m.kode_barang === kode)
     .sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-    
+
   const logKeluar = keluar
     .filter(k => k.kode_barang === kode)
     .sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
 
   // Hitung total
-  const totalMasuk = logMasuk.reduce((acc, curr) => acc + curr.jumlah, 0);
-  const totalKeluar = logKeluar.reduce((acc, curr) => acc + curr.jumlah, 0);
+  const totalMasuk = logMasuk.reduce((acc, curr) => acc + Number(curr.jumlah || 0), 0);
+  const totalKeluar = logKeluar.reduce((acc, curr) => acc + Number(curr.jumlah || 0), 0);
 
   return (
     <div className="space-y-21 w-full max-w-7xl mx-auto">
-      
+
       {/* Header & Navigasi */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-13">
         <div className="flex items-center gap-13">
-          <button 
+          <button
             onClick={() => navigate('/barang')}
             className="w-34 h-34 flex items-center justify-center bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 text-slate-500 transition-all shadow-sm"
           >
@@ -57,13 +58,13 @@ export default function DetailBarang() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-21">
         {/* Kolom Kiri: Info Utama & Statistik */}
         <div className="lg:col-span-1 space-y-21">
-          
+
           {/* Card Info Utama */}
           <Card className="p-21 border-slate-200 shadow-sm overflow-hidden relative">
             <div className="absolute top-0 right-0 p-34 opacity-5">
               <Package size={120} />
             </div>
-            
+
             <div className="relative z-10 flex flex-col gap-13">
               {item.image_url ? (
                 <img src={item.image_url} alt={item.nama_barang} className="w-full h-48 object-cover rounded-xl border border-slate-100 shadow-sm bg-slate-50" />
@@ -128,7 +129,7 @@ export default function DetailBarang() {
 
         {/* Kolom Kanan: Histori Tabel */}
         <div className="lg:col-span-2 flex flex-col gap-21">
-          
+
           {/* Tabel Masuk */}
           <Card className="p-21 border-slate-200 shadow-sm flex-1">
             <div className="flex items-center gap-8 mb-13 pb-13 border-b border-slate-100">
@@ -140,7 +141,7 @@ export default function DetailBarang() {
                 {logMasuk.length} riwayat
               </span>
             </div>
-            
+
             {logMasuk.length === 0 ? (
               <div className="py-21 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 Belum ada data barang masuk.

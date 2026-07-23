@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
-import createAuthSlice from './auth';
+import createAuthSlice from '../auth';
 import createBarangSlice from './barang';
 import createMasukSlice from './masuk';
 import createKeluarSlice from './keluar';

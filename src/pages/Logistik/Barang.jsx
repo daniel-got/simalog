@@ -2,16 +2,20 @@ import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Plus, Download, Pencil, Trash2, Package, Image as ImageIcon, LayoutGrid, List, Search, QrCode, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import useStore from '../store/useStore';
-import { supabase } from '../lib/supabase';
-import { Card } from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import { Table } from '../components/ui/Table';
-import { Input, Select } from '../components/ui/Input';
-import ItemCard from '../components/ui/ItemCard';
-import BarcodeScanner from '../components/ui/BarcodeScanner';
-import Pagination from '../components/ui/Pagination';
-import { KELOMPOK_BARANG } from '../utils/constants';
+
+// PERUBAHAN 1: Arahkan ke useLogistikStore baru dengan path mundur 2 tingkat
+import useLogistikStore from '../../store/Logistik/useLogistikStore';
+import { supabase } from '../../lib/supabase';
+
+// PERUBAHAN 2: Sesuaikan seluruh import UI & Utils (mundur 2 tingkat memakai ../../)
+import { Card } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import { Table } from '../../components/ui/Table';
+import { Input, Select } from '../../components/ui/Input';
+import ItemCard from '../../components/ui/ItemCard';
+import BarcodeScanner from '../../components/ui/BarcodeScanner';
+import Pagination from '../../components/ui/Pagination';
+import { KELOMPOK_BARANG } from '../../utils/constants';
 
 const EMPTY = {
   kode_barang: '',
@@ -25,7 +29,9 @@ const EMPTY = {
 };
 
 export default function Barang() {
-  const { barang, addBarang, updateBarang, deleteBarang } = useStore();
+  // PERUBAHAN 3: Ubah fungsi pemanggil dari useStore menjadi useLogistikStore
+  const { barang, addBarang, updateBarang, deleteBarang } = useLogistikStore();
+
   const [open, setOpen] = useState(false);
   const [editKode, setEditKode] = useState(null);
   const [form, setForm] = useState(EMPTY);
@@ -41,6 +47,10 @@ export default function Barang() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+
+  // ── TAMBAHAN STATE UNTUK CUSTOM MODAL HAPUS ──
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // Reset ke halaman 1 saat filter berubah
   useEffect(() => { setCurrentPage(1); }, [filterText, filterKelompok, sortOrder]);
@@ -87,9 +97,18 @@ export default function Barang() {
 
   const handleEdit = (b) => { setForm(b); setEditKode(b.kode_barang); setOpen(true); };
 
+  // ── PERUBAHAN FUNGSI HAPUS: Buka custom modal, bukan confirm browser ──
   const handleDelete = (b) => {
-    if (confirm(`Yakin ingin menghapus barang "${b.nama_barang}" (${b.kode_barang})? Semua riwayat transaksi terkait barang ini akan ikut terhapus.`)) {
-      deleteBarang(b.kode_barang);
+    setItemToDelete(b);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Fungsi eksekusi hapus setelah user klik "Ya, Hapus" di modal
+  const handleConfirmDelete = async () => {
+    if (itemToDelete) {
+      await deleteBarang(itemToDelete.kode_barang);
+      setIsDeleteModalOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -98,15 +117,15 @@ export default function Barang() {
     if (!scannedCode) return;
 
     // Cek apakah barang sudah ada di database
-    const existing = barang.find(b => b.kode_barang === code);
+    const existing = barang.find(b => b.kode_barang === scannedCode);
     if (existing) {
-      alert(`Barang dengan kode ${code} sudah ada. Membuka form edit.`);
+      alert(`Barang dengan kode ${scannedCode} sudah ada. Membuka form edit.`);
       handleEdit(existing);
     } else {
       // Buka form tambah dengan data pre-filled
       setForm({
         ...EMPTY,
-        kode_barang: code,
+        kode_barang: scannedCode,
         nama_barang: 'Item Hasil Scan',
         satuan_harga: 0,
       });
@@ -186,7 +205,7 @@ export default function Barang() {
       {open && (
         <Card className="border-teal-200 bg-teal-50/40 p-21">
           <p className="text-base font-bold text-slate-700 mb-13">
-            {editKode ? '✏️  Edit Barang' : '📦  Tambah Barang Baru'}
+            {editKode ? '✏️  Edit Barang' : '📦  Tambah Barang Baru'}
           </p>
           <form onSubmit={handleSubmit} className="space-y-13">
 
@@ -251,7 +270,7 @@ export default function Barang() {
 
                   if (selectedFile.size > maxSizeBytes) {
                     alert(`Ukuran foto terlalu besar (${(selectedFile.size / 1024 / 1024).toFixed(1)}MB). Maksimal ${MAX_SIZE_MB}MB.`);
-                    e.target.value = ''; // reset input, biar file yang ditolak nggak "nyangkut" di form
+                    e.target.value = '';
                     return;
                   }
 
@@ -399,12 +418,12 @@ export default function Barang() {
                   <div className="flex gap-5">
                     <Link to={`/barang/${b.kode_barang}`}
                       className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center
-                      hover:bg-teal-100 transition-colors" title="Detail">
+                      hover:bg-teal-100 transition-colors" title="Detail">
                       <Eye size={12} />
                     </Link>
                     <button onClick={() => handleEdit(b)}
                       className="w-21 h-21 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center
-                      hover:bg-blue-100 transition-colors" title="Edit">
+                      hover:bg-blue-100 transition-colors" title="Edit">
                       <Pencil size={12} />
                     </button>
                     <button onClick={() => handleDelete(b)}
@@ -432,6 +451,45 @@ export default function Barang() {
           onResult={handleScanResult}
           onClose={() => setShowScanner(false)}
         />
+      )}
+
+      {/* ── CUSTOM MODAL KONFIRMASI HAPUS (GANTI BROWSER CONFIRM) ── */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop Gelap Belakang */}
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsDeleteModalOpen(false)}
+          />
+
+          {/* Kotak Modal Utama */}
+          <div className="relative bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md p-6 flex flex-col gap-4 z-10 animate-in fade-in zoom-in-95 duration-150">
+            <div>
+              <h3 className="text-base font-bold text-slate-800 mb-2">Hapus Barang Logistik</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Yakin ingin menghapus barang <span className="font-semibold text-slate-700">"{itemToDelete?.nama_barang}" ({itemToDelete?.kode_barang})</span>? Semua riwayat transaksi terkait barang ini akan ikut terhapus secara permanen.
+              </p>
+            </div>
+
+            {/* Tombol Batal / Ya, Hapus */}
+            <div className="flex items-center justify-end gap-3 mt-4">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 active:scale-95 transition-all select-none"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-sm font-semibold text-white shadow-sm active:scale-95 transition-all select-none"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

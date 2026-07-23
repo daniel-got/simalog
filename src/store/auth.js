@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase'; // Path tetap aman karena posisi file di luar folder store utama
 
 const createAuthSlice = (set, get) => ({
     currentUser: null,
@@ -14,7 +14,10 @@ const createAuthSlice = (set, get) => ({
         if (data?.user) {
             // Karena ini Hybrid, yang berhasil login email PASTI adalah Admin.
             set({ currentUser: { id: data.user.id, nama: 'Administrator', role: 'Admin' } });
-            get().fetchData();
+
+            // PERUBAHAN: Panggil fungsi fetch khusus Logistik yang baru
+            if (get().fetchDataLogistik) get().fetchDataLogistik();
+
             return { success: true };
         }
         return { success: false, error: 'Unknown error' };
@@ -23,23 +26,16 @@ const createAuthSlice = (set, get) => ({
     // Login Guest lokal (tanpa password, role User)
     loginAsGuest: () => {
         set({ currentUser: { id: '00000000-0000-0000-0000-000000000000', nama: 'Guest (Pegawai)', role: 'User' } });
-        get().fetchData();
+
+        // PERUBAHAN: Panggil fungsi fetch khusus Logistik yang baru
+        if (get().fetchDataLogistik) get().fetchDataLogistik();
     },
 
-    // PENTING: 
-    // - Untuk Admin: signOut() memicu event SIGNED_OUT, yang ditangkap oleh
-    //   onAuthStateChange di App.jsx untuk reset state. Ini mencegah circular call.
-    // - Untuk Guest: signOut() TIDAK memicu event apa pun (karena Guest memang
-    //   tidak pernah login lewat Supabase Auth), jadi state harus direset manual di sini.
+    // Proses Logout
     logout: async () => {
-        const isGuest = get().currentUser?.role === 'User';
+        await supabase.auth.signOut().catch(err => console.error("SignOut error:", err));
 
-        await supabase.auth.signOut();
-
-        if (isGuest) {
-            set({ currentUser: null, barang: [], masuk: [], keluar: [], minta: [] });
-        }
-        // Untuk Admin, reset state terjadi otomatis lewat onAuthStateChange di App.jsx
+        set({ currentUser: null, barang: [], masuk: [], keluar: [], minta: [] });
     },
 });
 
