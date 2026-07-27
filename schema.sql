@@ -21,7 +21,10 @@
 -- CREATE TABLE barang (
 --   kode_barang TEXT PRIMARY KEY,
 --   nama_barang TEXT NOT NULL,
---   kategori TEXT NOT NULL,
+--   kelompok_barang TEXT NOT NULL,
+--   subkelompok_barang TEXT,
+--   satuan_barang TEXT NOT NULL,
+--   satuan_harga INTEGER NOT NULL DEFAULT 0,
 --   stok_saat_ini INTEGER NOT NULL DEFAULT 0,
 --   image_url TEXT,
 --   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
