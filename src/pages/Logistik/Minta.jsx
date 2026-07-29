@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Download, LayoutGrid, List, Search, QrCode } from 'lucide-react';
+import { Plus, Download, LayoutGrid, List, Search, QrCode, CheckCircle2, XCircle, Pencil, Trash2 } from 'lucide-react';
 import useLogistikStore from '../../store/Logistik/useLogistikStore';
 import { Card } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -12,12 +12,15 @@ import Pagination from '../../components/ui/Pagination';
 import BarcodeScanner from '../../components/ui/BarcodeScanner';
 import { KELOMPOK_BARANG } from '../../utils/constants';
 import { isValidUUID } from '../../utils/uuid';
+import { useToast } from '../../components/ui/Toast';
 
 const EMPTY = { kode_barang: '', jumlah: '', tanggal_minta: new Date().toISOString().split('T')[0], nama_pemohon: '' };
 
 export default function Minta() {
   // Menggunakan state dan fungsi khusus untuk Permintaan (minta) dari store
   const { minta, addMinta, updateMinta, deleteMinta, updateMintaStatus, barang, currentUser } = useLogistikStore();
+  const toast = useToast();
+
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [oldItem, setOldItem] = useState(null);
@@ -33,7 +36,7 @@ export default function Minta() {
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
-  // State Baru untuk Custom Modal Konfirmasi Hapus
+  // State untuk Custom Modal Konfirmasi Hapus
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
@@ -59,25 +62,24 @@ export default function Minta() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Build payload yang VALID & BERSIH tanpa kolom bermasalah
     const payload = {
       nama_pemohon: form.nama_pemohon || currentUser?.name || currentUser?.nama || 'Guest',
       kode_barang: form.kode_barang,
       jumlah: parseInt(form.jumlah, 10),
       tanggal_minta: form.tanggal_minta || new Date().toISOString().split('T')[0],
-      status_persetujuan: 'Diajukan' // Gunakan status awal sesuai Supabase/Enum
+      status_persetujuan: 'Diajukan'
     };
 
-    // PENTING UNTUK ID_USER (Mencegah foreign key constraint error):
-    // Hanya masukkan id_user JIKA ada ID UUID yang benar-benar valid dari Supabase Auth
     if (currentUser?.id && isValidUUID(currentUser.id)) {
       payload.id_user = currentUser.id;
     }
 
     if (editId) {
       await updateMinta(editId, payload);
+      toast.success('Data permintaan barang berhasil diperbarui!');
     } else {
       await addMinta(payload);
+      toast.success('Permintaan barang berhasil diajukan!');
     }
 
     setOpen(false);
@@ -106,8 +108,18 @@ export default function Minta() {
   const handleConfirmDelete = () => {
     if (itemToDelete) {
       deleteMinta(itemToDelete.id);
+      toast.success('Data permintaan berhasil dihapus!');
       setIsDeleteModalOpen(false);
       setItemToDelete(null);
+    }
+  };
+
+  const handleUpdateStatus = (id, newStatus) => {
+    updateMintaStatus(id, newStatus);
+    if (newStatus === 'Disetujui') {
+      toast.success('Permintaan barang telah DISETUJUI!');
+    } else if (newStatus === 'Ditolak') {
+      toast.info('Permintaan barang telah DITOLAK!');
     }
   };
 
@@ -119,7 +131,7 @@ export default function Minta() {
       setForm(prev => ({ ...prev, kode_barang: scannedCode }));
       setOpen(true);
     } else {
-      alert(`Barang dengan kode "${scannedCode}" tidak terdaftar di database.`);
+      toast.warning(`Barang dengan kode "${scannedCode}" tidak terdaftar di database.`);
     }
   };
 
@@ -131,6 +143,7 @@ export default function Minta() {
 
   return (
     <div className="space-y-21">
+      {/* ── Page Header (Identik dengan Barang, Masuk, Keluar) ── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Permintaan Barang</h1>
@@ -167,6 +180,7 @@ export default function Minta() {
         </div>
       </div>
 
+      {/* ── Form Modal Inline ── */}
       {open && (
         <Card className="border-teal-200 bg-teal-50/30 p-21">
           <p className="text-base font-bold text-slate-700 mb-13">
@@ -198,7 +212,7 @@ export default function Minta() {
         </Card>
       )}
 
-      {/* Search & Filter Card */}
+      {/* ── Search & Filter Card (100% Konsisten dengan Barang, Masuk, Keluar) ── */}
       <div className="bg-slate-50 p-13 rounded-2xl border border-slate-100 shadow-sm space-y-8">
         <div className="flex gap-8">
           <div className="relative flex-1">
@@ -242,7 +256,7 @@ export default function Minta() {
         </div>
       </div>
 
-      {/* Data Views */}
+      {/* ── Data Views ── */}
       {filtered.length === 0 ? (
         <div className="text-center py-34 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
           Tidak ada data transaksi permintaan.
@@ -260,7 +274,7 @@ export default function Minta() {
                   currentUser={currentUser}
                   onEdit={() => handleEdit(m)}
                   onDelete={() => handleDelete(m)}
-                  onUpdateStatus={updateMintaStatus}
+                  onUpdateStatus={handleUpdateStatus}
                 />
               );
             })}
@@ -308,18 +322,18 @@ export default function Minta() {
                       {currentUser?.role === 'Admin' && (status === 'Diajukan' || status === 'Pending') && (
                         <div className="flex gap-1">
                           <button
-                            onClick={() => updateMintaStatus(m.id, 'Disetujui')}
-                            className="text-[10px] font-bold px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
+                            onClick={() => handleUpdateStatus(m.id, 'Disetujui')}
+                            className="text-[10px] font-bold px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors flex items-center gap-1"
                             title="Setujui Permintaan"
                           >
-                            ✓ Setujui
+                            <CheckCircle2 size={11} /> Setujui
                           </button>
                           <button
-                            onClick={() => updateMintaStatus(m.id, 'Ditolak')}
-                            className="text-[10px] font-bold px-2 py-1 bg-rose-600 text-white rounded hover:bg-rose-700 transition-colors"
+                            onClick={() => handleUpdateStatus(m.id, 'Ditolak')}
+                            className="text-[10px] font-bold px-2 py-1 bg-rose-600 text-white rounded hover:bg-rose-700 transition-colors flex items-center gap-1"
                             title="Tolak Permintaan"
                           >
-                            ✕ Tolak
+                            <XCircle size={11} /> Tolak
                           </button>
                         </div>
                       )}
@@ -351,7 +365,7 @@ export default function Minta() {
         />
       )}
 
-      {/* ── CUSTOM MODAL KONFIRMASI HAPUS (INLINE STYLE) ── */}
+      {/* ── CUSTOM MODAL KONFIRMASI HAPUS ── */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div

@@ -1,282 +1,210 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
 import {
-  Plus, Download, Pencil, Trash2, Search, Calendar,
-  Shield, LayoutGrid, List, Image as ImageIcon, Settings2,
-  X, Loader2, Info, Car, Clock, Paperclip, Eye,
-  ChevronDown, Tag
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  LayoutGrid,
+  List,
+  Calendar,
+  Image as ImageIcon,
+  Car,
+  Clock,
+  Loader2,
+  FolderPlus,
+  X,
+  Lock,
+  Sparkles,
+  FileText,
 } from 'lucide-react';
-import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
-import useLogistikStore from '../../store/Logistik/useLogistikStore';
-import { Card } from '../../components/ui/Card';
+
 import Button from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import { Table } from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
-import { supabase } from '../../lib/supabase';
 import ModalKategoriAset from './ModalKategoriAset';
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+import { cn } from '../../utils/cn';
+import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
+import { supabase } from '../../lib/supabase';
 
 const KONDISI_OPTIONS = [
-  { label: 'Baik', value: 'Baik' },
-  { label: 'Rusak Ringan', value: 'Rusak Ringan' },
-  { label: 'Rusak Berat', value: 'Rusak Berat' },
-  { label: 'Dihapuskan', value: 'Dihapuskan' },
+  { value: 'Baik', label: 'Baik' },
+  { value: 'Rusak Ringan', label: 'Rusak Ringan' },
+  { value: 'Rusak Berat', label: 'Rusak Berat' },
+  { value: 'Dalam Perbaikan', label: 'Dalam Perbaikan' },
+  { value: 'Dihentikan/Afkir', label: 'Dihentikan/Afkir' },
 ];
 
-const EMPTY_FORM = {
-  kelompok_id: '',
-  sub_kelompok_id: '',
-  nama_aset: '',
-  merek_tipe: '',
-  nomor_seri_plat: '',
-  lokasi_ruangan: '',
-  penanggung_jawab: '',
-  tanggal_perolehan: new Date().toISOString().split('T')[0],
-  harga_beli: '',
-  status_kondisi: 'Baik',
-  foto_url: '',
-  lampiran_url: '',
-  // km fields
-  no_polisi: '',
-  km_saat_ini: '',
-  interval_km: '',
-  // bulan fields
-  interval_bulan: '',
-  tanggal_servis_terakhir: '',
-};
+const SATUAN_OPTIONS = [
+  { value: 'Unit', label: 'Unit' },
+  { value: 'M2', label: 'M²' },
+  { value: 'Buah', label: 'Buah' },
+  { value: 'Set', label: 'Set' },
+];
 
-const kondisiBadge = (k) => {
-  const map = {
-    'Baik': 'bg-emerald-50 text-emerald-600',
-    'Rusak Ringan': 'bg-amber-50 text-amber-600',
-    'Rusak Berat': 'bg-red-50 text-red-600',
-    'Dihapuskan': 'bg-slate-100 text-slate-500',
-  };
-  return map[k] || 'bg-slate-100 text-slate-500';
-};
-
-// ─── Komponen Input & Select internal (agar tidak bergantung pada props yg berbeda) ─
-function FieldInput({ label, required, hint, className, ...props }) {
-  return (
-    <div className="flex flex-col gap-3 w-full">
-      {label && (
-        <label className="text-[10px] font-bold text-slate-500 tracking-widest uppercase flex items-center gap-3">
-          {label}
-          {required && <span className="text-red-400">*</span>}
-          {hint && <span className="text-slate-400 font-medium normal-case tracking-normal">— {hint}</span>}
-        </label>
-      )}
-      <input
-        className={`w-full px-13 py-8 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder:text-slate-300 outline-none ring-0 transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${className || ''}`}
-        {...props}
-      />
-    </div>
-  );
-}
-
-function FieldSelect({ label, required, children, ...props }) {
-  return (
-    <div className="flex flex-col gap-3 w-full">
-      {label && (
-        <label className="text-[10px] font-bold text-slate-500 tracking-widest uppercase flex items-center gap-3">
-          {label}
-          {required && <span className="text-red-400">*</span>}
-        </label>
-      )}
-      <select
-        className="w-full px-13 py-8 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 outline-none ring-0 transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-        {...props}
-      >
-        {children}
-      </select>
-    </div>
-  );
-}
-
-// ─── Main Component ────────────────────────────────────────────────────────────
+// ── Style konstanta agar konsisten di seluruh form ──────────────────────────
+const INPUT_CLASS =
+  'w-full px-13 py-8 text-sm bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-800 placeholder:text-slate-400';
+const SELECT_CLASS =
+  'w-full px-13 py-8 text-sm bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-800';
+const LABEL_CLASS =
+  'text-xs font-semibold text-slate-500 tracking-wide uppercase mb-1.5 block';
 
 export default function DaftarAset() {
   const navigate = useNavigate();
-  const currentUser = useLogistikStore(s => s.currentUser);
-  const isAdmin = currentUser?.role === 'Admin';
+  const isAdmin = true;
 
+  // ── Store ────────────────────────────────────────────────────────────────
   const {
     daftarAset,
     kelompokAset,
     subKelompokAset,
+    fetchDataHartaBenda,
     addAset,
     updateAset,
     deleteAset,
-    fetchKelompokAset,
-    fetchSubKelompokAset,
   } = useHartaBendaStore();
 
-  // ── Modal State ──────────────────────────────────────────────────────────
-  const [openForm, setOpenForm] = useState(false);
+  // ── UI State ─────────────────────────────────────────────────────────────
+  const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [showKategoriModal, setShowKategoriModal] = useState(false);
-
-  // ── Upload State ─────────────────────────────────────────────────────────
+  const [uploading, setUploading] = useState(false);
   const [fotoFile, setFotoFile] = useState(null);
   const [lampiranFile, setLampiranFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
-
-  // ── Kode Aset Preview ────────────────────────────────────────────────────
-  const [kodePreview, setKodePreview] = useState('');
   const [loadingKode, setLoadingKode] = useState(false);
+  const [showKategoriModal, setShowKategoriModal] = useState(false);
 
-  // ── Filter State ─────────────────────────────────────────────────────────
-  const [filterText, setFilterText] = useState('');
-  const [filterKelompok, setFilterKelompok] = useState('');
-  const [filterKondisi, setFilterKondisi] = useState('');
-
-  // ── Pagination & View ────────────────────────────────────────────────────
-  const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
-  const [viewMode, setViewMode] = useState('list');
-
-  // ── Delete Modal ─────────────────────────────────────────────────────────
+  // Delete Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  // ── Reset page saat filter berubah ──────────────────────────────────────
-  useEffect(() => { setCurrentPage(1); }, [filterText, filterKelompok, filterKondisi]);
+  // Filter & Pagination State
+  const [filterText, setFilterText] = useState('');
+  const [filterKelompok, setFilterKelompok] = useState('');
+  const [filterKondisi, setFilterKondisi] = useState('');
+  const [viewMode, setViewMode] = useState('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(12);
 
-  // ── Fetch kategori saat mount ────────────────────────────────────────────
-  useEffect(() => {
-    fetchKelompokAset();
-    fetchSubKelompokAset();
-  }, [fetchKelompokAset, fetchSubKelompokAset]);
+  // ── Form Initial State ───────────────────────────────────────────────────
+  const initialFormState = {
+    nama_aset: '',
+    kode_aset: '',
+    kelompok_id: '',
+    sub_kelompok_id: '',
+    merek_tipe: '',
+    nomor_seri_plat: '',
+    lokasi_ruangan: '',
+    penanggung_jawab: '',
+    status_kondisi: 'Baik',
+    harga_beli: '',
+    tanggal_perolehan: new Date().toISOString().split('T')[0],
+    no_polisi: '',
+    km_saat_ini: '',
+    interval_km: '',
+    interval_bulan: '',
+    tanggal_servis_terakhir: '',
+    foto_url: '',
+    lampiran_url: '',
+    // BMN fields
+    kode_bmn: '',
+    satuan: '',
+    masa_manfaat_bulan: '',
+  };
 
-  // ── Generate kode aset preview saat kelompok berubah ────────────────────
+  const [form, setForm] = useState(initialFormState);
+
+  // ── Init ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!form.kelompok_id || editId) { setKodePreview(''); return; }
-    const timer = setTimeout(async () => {
+    fetchDataHartaBenda();
+  }, [fetchDataHartaBenda]);
+
+  // ── Kode Aset Otomatis (hanya saat mode Tambah baru) ────────────────────
+  useEffect(() => {
+    // Mode edit: jangan generate ulang
+    if (editId) return;
+    if (!form.kelompok_id) {
+      setForm(f => ({ ...f, kode_aset: '' }));
+      return;
+    }
+
+    let cancelled = false;
+    const generateKode = async () => {
       setLoadingKode(true);
       try {
         const { data, error } = await supabase.rpc('generate_kode_aset', {
           p_kelompok_id: Number(form.kelompok_id),
         });
-        setKodePreview(error ? '—' : (data || '—'));
+        if (!cancelled) {
+          setForm(f => ({ ...f, kode_aset: error ? '' : (data || '') }));
+        }
       } catch {
-        setKodePreview('—');
+        // silent
       } finally {
-        setLoadingKode(false);
+        if (!cancelled) setLoadingKode(false);
       }
-    }, 400);
-    return () => clearTimeout(timer);
+    };
+
+    generateKode();
+    return () => { cancelled = true; };
   }, [form.kelompok_id, editId]);
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-  const formatRupiah = (n) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
+  // ── Sub-kelompok otomatis isi jika hanya ada satu pilihan ───────────────
+  useEffect(() => {
+    if (!form.kelompok_id) return;
+    const subs = subKelompokAset.filter(
+      s => String(s.kelompok_id) === String(form.kelompok_id)
+    );
+    if (subs.length === 1) {
+      setForm(f => ({ ...f, sub_kelompok_id: String(subs[0].id) }));
+    }
+  }, [form.kelompok_id, subKelompokAset]);
 
-  const getSubKelompokFiltered = () =>
-    subKelompokAset.filter(s => String(s.kelompok_id) === String(form.kelompok_id));
-
-  const getMaintenanceType = () => {
-    if (!form.sub_kelompok_id) return null;
-    return subKelompokAset.find(s => String(s.id) === String(form.sub_kelompok_id))?.maintenance_type || null;
-  };
-
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const closeForm = () => {
-    setOpenForm(false);
+    setShowForm(false);
     setEditId(null);
-    setForm(EMPTY_FORM);
+    setForm(initialFormState);
     setFotoFile(null);
     setLampiranFile(null);
-    setKodePreview('');
   };
 
-  // ── Upload helper ────────────────────────────────────────────────────────
-  const uploadFile = async (file, folder = 'aset') => {
-    const ext = file.name.split('.').pop();
-    const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from('images').upload(path, file);
-    if (error) throw new Error(error.message);
-    return supabase.storage.from('images').getPublicUrl(path).data.publicUrl;
-  };
-
-  // ── Submit ────────────────────────────────────────────────────────────────
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-
-    try {
-      let fotoUrl = form.foto_url;
-      let lampiranUrl = form.lampiran_url;
-
-      if (fotoFile) fotoUrl = await uploadFile(fotoFile, 'aset/foto');
-      if (lampiranFile) lampiranUrl = await uploadFile(lampiranFile, 'aset/lampiran');
-
-      const mType = getMaintenanceType();
-      const payload = {
-        kelompok_id: Number(form.kelompok_id) || null,
-        sub_kelompok_id: Number(form.sub_kelompok_id) || null,
-        nama_aset: form.nama_aset,
-        merek_tipe: form.merek_tipe || null,
-        nomor_seri_plat: form.nomor_seri_plat || null,
-        lokasi_ruangan: form.lokasi_ruangan,
-        penanggung_jawab: form.penanggung_jawab || null,
-        tanggal_perolehan: form.tanggal_perolehan,
-        harga_beli: Number(form.harga_beli) || 0,
-        status_kondisi: form.status_kondisi,  // setelah rename dari 'kondisi'
-        status: 'aktif',                       // kolom wajib di DB
-        maintenance_type: mType || 'tidak',
-        foto_url: fotoUrl || null,
-        lampiran_url: lampiranUrl || null,
-        // km fields — nama kolom sesuai DB: km_saat_ini
-        no_polisi: mType === 'km' ? (form.no_polisi || null) : null,
-        km_saat_ini: mType === 'km' ? (Number(form.km_saat_ini) || null) : null,
-        km_terakhir_servis: mType === 'km' ? (Number(form.km_saat_ini) || null) : null, // titik awal
-        interval_km: mType === 'km' ? (Number(form.interval_km) || null) : null,
-        // bulan fields
-        interval_bulan: mType === 'bulan' ? (Number(form.interval_bulan) || null) : null,
-        tanggal_servis_terakhir: mType === 'bulan' ? (form.tanggal_servis_terakhir || null) : null,
-      };
-
-      // Tambahkan kode_aset hanya saat create baru
-      if (!editId && kodePreview && kodePreview !== '—') {
-        payload.kode_aset = kodePreview;
-      }
-
-      const ok = editId ? await updateAset(editId, payload) : await addAset(payload);
-      if (ok) closeForm();
-    } catch (err) {
-      alert('Gagal menyimpan: ' + err.message);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleEdit = (a) => {
+  const handleEdit = (aset) => {
+    setEditId(aset.id);
     setForm({
-      kelompok_id: a.kelompok_id || '',
-      sub_kelompok_id: a.sub_kelompok_id || '',
-      nama_aset: a.nama_aset || '',
-      merek_tipe: a.merek_tipe || '',
-      nomor_seri_plat: a.nomor_seri_plat || '',
-      lokasi_ruangan: a.lokasi_ruangan || '',
-      penanggung_jawab: a.penanggung_jawab || '',
-      tanggal_perolehan: a.tanggal_perolehan || '',
-      harga_beli: a.harga_beli || '',
-      status_kondisi: a.status_kondisi || 'Baik',
-      foto_url: a.foto_url || '',
-      lampiran_url: a.lampiran_url || '',
-      no_polisi: a.no_polisi || '',
-      km_saat_ini: a.km_saat_ini || '',
-      interval_km: a.interval_km || '',
-      interval_bulan: a.interval_bulan || '',
-      tanggal_servis_terakhir: a.tanggal_servis_terakhir || '',
+      nama_aset: aset.nama_aset || '',
+      kode_aset: aset.kode_aset || '',
+      kelompok_id: aset.kelompok_id ? String(aset.kelompok_id) : '',
+      sub_kelompok_id: aset.sub_kelompok_id ? String(aset.sub_kelompok_id) : '',
+      merek_tipe: aset.merek_tipe || '',
+      nomor_seri_plat: aset.nomor_seri_plat || '',
+      lokasi_ruangan: aset.lokasi_ruangan || '',
+      penanggung_jawab: aset.penanggung_jawab || '',
+      status_kondisi: aset.status_kondisi || 'Baik',
+      harga_beli: aset.harga_beli || '',
+      tanggal_perolehan: aset.tanggal_perolehan || '',
+      no_polisi: aset.no_polisi || '',
+      km_saat_ini: aset.km_saat_ini || '',
+      interval_km: aset.interval_km || '',
+      interval_bulan: aset.interval_bulan || '',
+      tanggal_servis_terakhir: aset.tanggal_servis_terakhir || '',
+      foto_url: aset.foto_url || '',
+      lampiran_url: aset.lampiran_url || '',
+      // BMN fields
+      kode_bmn: aset.kode_bmn || '',
+      satuan: aset.satuan || '',
+      masa_manfaat_bulan: aset.masa_manfaat_bulan || '',
     });
-    setEditId(a.id);
-    setOpenForm(true);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = (a) => { setItemToDelete(a); setIsDeleteModalOpen(true); };
+  const handleDelete = (aset) => {
+    setItemToDelete(aset);
+    setIsDeleteModalOpen(true);
+  };
+
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
     await deleteAset(itemToDelete.id);
@@ -284,59 +212,161 @@ export default function DaftarAset() {
     setItemToDelete(null);
   };
 
-  const handleExport = () => {
-    const wb = XLSX.utils.book_new();
-    const exportData = filtered.map(a => ({
-      'Kode Aset': a.kode_aset || '',
-      'Nama Aset': a.nama_aset,
-      'Kelompok': a.kelompok?.nama || '',
-      'Sub-Kelompok': a.sub_kelompok?.nama || '',
-      'Merek / Tipe': a.merek_tipe || '',
-      'No. Seri / Plat': a.nomor_seri_plat || '',
-      'Lokasi': a.lokasi_ruangan,
-      'Penanggung Jawab': a.penanggung_jawab || '',
-      'Kondisi': a.status_kondisi,
-      'Harga Beli': a.harga_beli || 0,
-      'Tanggal Perolehan': a.tanggal_perolehan,
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), 'Daftar Aset');
-    XLSX.writeFile(wb, 'Daftar_Aset.xlsx');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!fotoFile && !form.foto_url) {
+      alert('Foto Aset wajib diunggah!');
+      setUploading(false);
+      return;
+    }
+
+    let fotoUrl = form.foto_url;
+
+    // Upload foto jika ada file baru
+    if (fotoFile) {
+      const ext = fotoFile.name.split('.').pop();
+      const fileName = `aset-${Date.now()}.${ext}`;
+      const filePath = `aset/foto/${fileName}`;
+
+      // Coba upload ke bucket 'images' (bucket utama yang public)
+      let { data: uploadData, error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, fotoFile, { upsert: true });
+
+      if (!uploadError && uploadData) {
+        const { data: urlData } = supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
+        fotoUrl = urlData?.publicUrl || '';
+      } else {
+        // Fallback ke bucket 'assets-foto' jika bucket 'images' gagal
+        const { data: fallbackData, error: fallbackError } = await supabase.storage
+          .from('assets-foto')
+          .upload(fileName, fotoFile, { upsert: true });
+        if (!fallbackError && fallbackData) {
+          const { data: urlData } = supabase.storage
+            .from('assets-foto')
+            .getPublicUrl(fileName);
+          fotoUrl = urlData?.publicUrl || '';
+        } else {
+          console.error('Upload foto gagal:', uploadError || fallbackError);
+          alert('Gagal mengunggah foto aset. Pastikan bucket "images" atau "assets-foto" di Supabase Storage sudah dibuat dan bersifat Public.');
+          setUploading(false);
+          return;
+        }
+      }
+    }
+
+    let lampiranUrl = form.lampiran_url;
+
+    // Upload lampiran jika ada file baru (opsional)
+    if (lampiranFile) {
+      const ext = lampiranFile.name.split('.').pop();
+      const fileName = `lampiran-${Date.now()}.${ext}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(`aset/lampiran/${fileName}`, lampiranFile, { upsert: true });
+      if (!uploadError && uploadData) {
+        const { data: urlData } = supabase.storage
+          .from('images')
+          .getPublicUrl(`aset/lampiran/${fileName}`);
+        lampiranUrl = urlData?.publicUrl || '';
+      }
+    }
+
+    const payload = {
+      ...form,
+      foto_url: fotoUrl,
+      lampiran_url: lampiranUrl,
+      harga_beli: form.harga_beli ? Number(form.harga_beli) : null,
+      kelompok_id: form.kelompok_id ? Number(form.kelompok_id) : null,
+      sub_kelompok_id: form.sub_kelompok_id ? Number(form.sub_kelompok_id) : null,
+      km_saat_ini: form.km_saat_ini ? Number(form.km_saat_ini) : null,
+      interval_km: form.interval_km ? Number(form.interval_km) : null,
+      interval_bulan: form.interval_bulan ? Number(form.interval_bulan) : null,
+      tanggal_perolehan: form.tanggal_perolehan || null,
+      tanggal_servis_terakhir: form.tanggal_servis_terakhir || null,
+      // BMN fields — boleh null
+      kode_bmn: form.kode_bmn?.trim() || null,
+      satuan: form.satuan || null,
+      masa_manfaat_bulan: form.masa_manfaat_bulan ? Number(form.masa_manfaat_bulan) : null,
+    };
+
+    let success;
+    if (editId) {
+      success = await updateAset(editId, payload);
+    } else {
+      success = await addAset(payload);
+    }
+
+    setUploading(false);
+    if (success) closeForm();
   };
 
-  // ── Filter ────────────────────────────────────────────────────────────────
+  // ── Computed ─────────────────────────────────────────────────────────────
+  const selectedSub = subKelompokAset.find(
+    s => String(s.id) === String(form.sub_kelompok_id)
+  );
+  const mType = selectedSub?.maintenance_type || 'tidak';
+
+  const filteredSubs = subKelompokAset.filter(
+    s => String(s.kelompok_id) === String(form.kelompok_id)
+  );
+
+  // ── Formatting Helpers ───────────────────────────────────────────────────
+  const formatRupiah = (val) => {
+    if (!val) return 'Rp 0';
+    return `Rp ${Number(val).toLocaleString('id-ID')}`;
+  };
+
+  const kondisiBadge = (kondisi) => {
+    switch (kondisi) {
+      case 'Baik':
+        return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+      case 'Rusak Ringan':
+        return 'bg-amber-50 text-amber-700 border border-amber-200';
+      case 'Rusak Berat':
+        return 'bg-rose-50 text-rose-700 border border-rose-200';
+      case 'Dalam Perbaikan':
+        return 'bg-blue-50 text-blue-700 border border-blue-200';
+      default:
+        return 'bg-slate-100 text-slate-600 border border-slate-200';
+    }
+  };
+
+  // ── Filter & Pagination ──────────────────────────────────────────────────
   const filtered = daftarAset.filter(a => {
-    const text = (
-      (a.nama_aset || '') + (a.nomor_seri_plat || '') +
-      (a.lokasi_ruangan || '') + (a.merek_tipe || '') +
-      (a.kode_aset || '') + (a.penanggung_jawab || '')
-    ).toLowerCase();
-    const matchText = text.includes(filterText.toLowerCase());
-    const matchKelompok = filterKelompok ? String(a.kelompok_id) === filterKelompok : true;
-    const matchKondisi = filterKondisi ? a.status_kondisi === filterKondisi : true;
-    return matchText && matchKelompok && matchKondisi;
+    const matchSearch =
+      (a.nama_aset || '').toLowerCase().includes(filterText.toLowerCase()) ||
+      (a.kode_aset || '').toLowerCase().includes(filterText.toLowerCase()) ||
+      (a.merek_tipe || '').toLowerCase().includes(filterText.toLowerCase()) ||
+      (a.nomor_seri_plat || '').toLowerCase().includes(filterText.toLowerCase()) ||
+      (a.penanggung_jawab || '').toLowerCase().includes(filterText.toLowerCase()) ||
+      (a.lokasi_ruangan || '').toLowerCase().includes(filterText.toLowerCase());
+
+    const matchKelompok = !filterKelompok || String(a.kelompok_id) === String(filterKelompok);
+    const matchKondisi = !filterKondisi || a.status_kondisi === filterKondisi;
+
+    return matchSearch && matchKelompok && matchKondisi;
   });
 
-  const paged = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const startIndex = (currentPage - 1) * perPage;
+  const paged = filtered.slice(startIndex, startIndex + perPage);
 
-  const mType = getMaintenanceType();
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-21">
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* ── Header Halaman ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-slate-800 tracking-tight">Daftar Aset</h1>
-          <p className="text-xs text-slate-400 mt-2">{filtered.length} aset tercatat</p>
+          <h1 className="text-xl font-black text-slate-800 tracking-tight">Master Harta &amp; Aset</h1>
+          <p className="text-xs text-slate-400 mt-2">{daftarAset.length} item terdaftar dalam sistem</p>
         </div>
-        <div className="flex gap-8 items-center">
-          {/* View toggle */}
+
+        <div className="flex gap-8">
+          {/* Toggle view */}
           <div className="flex bg-slate-100 rounded-xl p-3">
             <button
-              type="button"
               onClick={() => setViewMode('grid')}
               className={`p-5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
               title="Grid View"
@@ -344,18 +374,13 @@ export default function DaftarAset() {
               <LayoutGrid size={15} />
             </button>
             <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              className={`p-5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
-              title="List View"
+              onClick={() => setViewMode('table')}
+              className={`p-5 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
+              title="Table View"
             >
               <List size={15} />
             </button>
           </div>
-
-          <Button variant="ghost" size="icon" onClick={handleExport} title="Export Excel">
-            <Download size={16} />
-          </Button>
 
           {isAdmin && (
             <>
@@ -363,359 +388,328 @@ export default function DaftarAset() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowKategoriModal(true)}
-                className="border-slate-200 text-slate-600"
-                title="Kelola Kategori"
               >
-                <Settings2 size={14} />
-                <span className="hidden sm:inline">Kategori</span>
+                <FolderPlus size={15} /> Kategori
               </Button>
               <Button
                 size="sm"
-                onClick={() => { setEditId(null); setForm(EMPTY_FORM); setOpenForm(true); }}
-                className="bg-teal-600 hover:bg-teal-700 shadow-teal-500/20"
+                onClick={() => {
+                  if (showForm && !editId) {
+                    setShowForm(false);
+                  } else {
+                    setEditId(null);
+                    setForm(initialFormState);
+                    setShowForm(true);
+                  }
+                }}
               >
-                <Plus size={15} /> Tambah Aset
+                <Plus size={15} /> Tambah
               </Button>
             </>
           )}
         </div>
       </div>
 
-      {/* ── FORM MODAL OVERLAY ──────────────────────────────────────────────── */}
-      {openForm && (
-        <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={closeForm} />
-          <div className="relative bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl my-8 z-10 overflow-hidden">
+      {/* ── Form Card ── */}
+      {showForm && (
+        <Card className="border-teal-200 bg-teal-50/30 p-21">
+          <div className="flex justify-between items-center mb-13">
+            <p className="text-base font-bold text-slate-700">
+              {editId ? '✏️  Edit Data Aset' : '📦  Tambah Aset Baru'}
+            </p>
+            <button
+              type="button"
+              onClick={closeForm}
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-            {/* Form Header */}
-            <div className="flex items-center justify-between px-21 py-13 bg-gradient-to-r from-teal-600 to-teal-500 shrink-0">
+          <form onSubmit={handleSubmit} className="space-y-13">
+
+            {/* ── Baris 1: Kode & Nama ── */}
+            <div className="grid grid-cols-2 gap-13">
+              {/* Kode Aset — dapat diisi manual atau di-generate otomatis */}
               <div>
-                <p className="text-sm font-black text-white tracking-tight">
-                  {editId ? '✏️ Edit Detail Aset' : '🛡️ Registrasi Aset Baru'}
-                </p>
-                <p className="text-[10px] text-teal-100/80 font-medium mt-1">
-                  {editId ? 'Ubah data aset yang sudah tersimpan' : 'Daftarkan aset baru ke dalam sistem'}
-                </p>
+                <label className={LABEL_CLASS}>
+                  Kode Aset / Inventaris
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={loadingKode ? 'Membuat kode otomatis...' : 'Contoh: KODE/ASET/2026'}
+                    value={form.kode_aset}
+                    onChange={e => setForm(f => ({ ...f, kode_aset: e.target.value }))}
+                    className={cn(
+                      INPUT_CLASS,
+                      loadingKode && 'animate-pulse'
+                    )}
+                  />
+                </div>
               </div>
-              <button onClick={closeForm} className="w-34 h-34 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors">
-                <X size={16} />
-              </button>
+
+              <div>
+                <label className={LABEL_CLASS}>
+                  Nama Aset <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Laptop Asus ROG / AC Split 1.5 PK"
+                  value={form.nama_aset}
+                  onChange={e => setForm(f => ({ ...f, nama_aset: e.target.value }))}
+                  required
+                  className={INPUT_CLASS}
+                />
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-21 space-y-13 overflow-y-auto max-h-[75vh]">
-
-              {/* ── SEKSI 1: KATEGORI ──────────────────────────────────────── */}
+            {/* ── Baris 2: Kelompok & Sub-Kelompok (Progressive) ── */}
+            <div className="grid grid-cols-2 gap-13">
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-5">
-                  <Tag size={11} /> Kategori Aset
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <label className={LABEL_CLASS}>
+                  Kelompok Aset <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={form.kelompok_id}
+                  onChange={e => setForm(f => ({
+                    ...f,
+                    kelompok_id: e.target.value,
+                    sub_kelompok_id: '',
+                    kode_aset: editId ? f.kode_aset : '',
+                  }))}
+                  required
+                  className={SELECT_CLASS}
+                >
+                  <option value="">Pilih...</option>
+                  {kelompokAset.map(k => (
+                    <option key={k.id} value={k.id}>{k.nama}</option>
+                  ))}
+                </select>
+              </div>
 
-                  {/* Kelompok */}
-                  <FieldSelect
-                    label="Kelompok Aset"
-                    required
-                    value={form.kelompok_id}
-                    onChange={e => setForm(f => ({ ...f, kelompok_id: e.target.value, sub_kelompok_id: '' }))}
-                  >
-                    <option value="">— Pilih Kelompok —</option>
-                    {kelompokAset.map(k => (
-                      <option key={k.id} value={k.id}>{k.nama}</option>
-                    ))}
-                  </FieldSelect>
-
-                  {/* Sub-Kelompok */}
-                  <FieldSelect
-                    label="Sub-Kelompok Aset"
-                    required
+              {/* Sub-kelompok: HANYA tampil setelah kelompok dipilih */}
+              {form.kelompok_id && (
+                <div>
+                  <label className={LABEL_CLASS}>
+                    Subkelompok Aset <span className="text-rose-500">*</span>
+                  </label>
+                  <select
                     value={form.sub_kelompok_id}
                     onChange={e => setForm(f => ({ ...f, sub_kelompok_id: e.target.value }))}
-                    disabled={!form.kelompok_id}
+                    required
+                    className={SELECT_CLASS}
                   >
-                    <option value="">— Pilih Sub-Kelompok —</option>
-                    {getSubKelompokFiltered().map(s => (
+                    <option value="">Pilih...</option>
+                    {filteredSubs.map(s => (
                       <option key={s.id} value={s.id}>{s.nama}</option>
                     ))}
-                  </FieldSelect>
-                </div>
-
-                {/* Kode Aset Preview */}
-                {!editId && form.kelompok_id && (
-                  <div className="mt-8 flex items-center gap-8 bg-slate-50 border border-slate-200 rounded-xl px-13 py-8">
-                    <div className="flex flex-col gap-1 flex-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kode Aset (Auto-Generate)</span>
-                      <span className="font-mono text-base font-black text-teal-700 tracking-widest flex items-center gap-5">
-                        {loadingKode
-                          ? <Loader2 size={14} className="animate-spin text-slate-400" />
-                          : (kodePreview || '—')
-                        }
-                      </span>
-                    </div>
-                    <div className="text-[9px] text-slate-400 text-right leading-relaxed">
-                      Dikonfirmasi saat<br />data disimpan
-                    </div>
-                  </div>
-                )}
-
-                {/* Edit: tampilkan kode eksisting */}
-                {editId && (
-                  <div className="mt-8 flex items-center gap-8 bg-slate-50 border border-slate-100 rounded-xl px-13 py-8">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kode Aset</span>
-                    <span className="font-mono text-sm font-black text-slate-600">
-                      {daftarAset.find(a => a.id === editId)?.kode_aset || '—'}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* ── SEKSI 2: INFORMASI UTAMA ───────────────────────────────── */}
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-5">
-                  <Info size={11} /> Informasi Aset
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <FieldInput
-                    label="Nama Aset"
-                    required
-                    placeholder="contoh: AC Split Samsung 1.5 PK"
-                    value={form.nama_aset}
-                    onChange={e => setForm(f => ({ ...f, nama_aset: e.target.value }))}
-                  />
-                  <FieldInput
-                    label="Merek / Tipe"
-                    placeholder="contoh: Samsung / AR13TYHQB"
-                    value={form.merek_tipe}
-                    onChange={e => setForm(f => ({ ...f, merek_tipe: e.target.value }))}
-                  />
-                  <FieldInput
-                    label="Nomor Seri / Plat"
-                    placeholder="contoh: SN-2024-001 atau B 1234 XYZ"
-                    value={form.nomor_seri_plat}
-                    onChange={e => setForm(f => ({ ...f, nomor_seri_plat: e.target.value }))}
-                  />
-                  <FieldInput
-                    label="Lokasi / Ruangan"
-                    required
-                    placeholder="contoh: Ruang Rapat Lantai 2"
-                    value={form.lokasi_ruangan}
-                    onChange={e => setForm(f => ({ ...f, lokasi_ruangan: e.target.value }))}
-                  />
-                  <FieldInput
-                    label="Penanggung Jawab"
-                    placeholder="contoh: Budi Santoso"
-                    value={form.penanggung_jawab}
-                    onChange={e => setForm(f => ({ ...f, penanggung_jawab: e.target.value }))}
-                  />
-                  <FieldInput
-                    label="Harga Beli (Rp)"
-                    required
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={form.harga_beli}
-                    onChange={e => setForm(f => ({ ...f, harga_beli: e.target.value }))}
-                  />
-                  <FieldInput
-                    label="Tanggal Perolehan"
-                    required
-                    type="date"
-                    value={form.tanggal_perolehan}
-                    onChange={e => setForm(f => ({ ...f, tanggal_perolehan: e.target.value }))}
-                  />
-                  <FieldSelect
-                    label="Kondisi Awal"
-                    required
-                    value={form.status_kondisi}
-                    onChange={e => setForm(f => ({ ...f, status_kondisi: e.target.value }))}
-                  >
-                    {KONDISI_OPTIONS.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </FieldSelect>
-                </div>
-              </div>
-
-              {/* ── SEKSI 3: FORM DINAMIS MAINTENANCE ─────────────────────── */}
-              {form.sub_kelompok_id && (
-                <div>
-                  {mType === 'km' && (
-                    <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-13">
-                      <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-8 flex items-center gap-5">
-                        <Car size={11} /> Informasi Kendaraan (Servis Berbasis KM)
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <FieldInput
-                          label="No. Polisi"
-                          placeholder="B 1234 XYZ"
-                          value={form.no_polisi}
-                          onChange={e => setForm(f => ({ ...f, no_polisi: e.target.value }))}
-                          className="bg-white"
-                        />
-                        <FieldInput
-                          label="KM Saat Ini"
-                          type="number"
-                          min="0"
-                          placeholder="contoh: 45000"
-                          value={form.km_saat_ini}
-                          onChange={e => setForm(f => ({ ...f, km_saat_ini: e.target.value }))}
-                          className="bg-white"
-                        />
-                        <FieldInput
-                          label="Interval Servis (KM)"
-                          type="number"
-                          min="0"
-                          placeholder="contoh: 5000"
-                          value={form.interval_km}
-                          onChange={e => setForm(f => ({ ...f, interval_km: e.target.value }))}
-                          className="bg-white"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {mType === 'bulan' && (
-                    <div className="bg-amber-50/70 border border-amber-100 rounded-2xl p-13">
-                      <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-8 flex items-center gap-5">
-                        <Clock size={11} /> Jadwal Servis Berkala (Bulanan)
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <FieldInput
-                          label="Interval Servis (Bulan)"
-                          type="number"
-                          min="1"
-                          max="60"
-                          placeholder="contoh: 3 (setiap 3 bulan)"
-                          value={form.interval_bulan}
-                          onChange={e => setForm(f => ({ ...f, interval_bulan: e.target.value }))}
-                          className="bg-white"
-                        />
-                        <FieldInput
-                          label="Tanggal Servis Terakhir"
-                          type="date"
-                          value={form.tanggal_servis_terakhir}
-                          onChange={e => setForm(f => ({ ...f, tanggal_servis_terakhir: e.target.value }))}
-                          className="bg-white"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {mType === 'tidak' && (
-                    <div className="flex items-start gap-8 bg-slate-50 border border-slate-200 rounded-2xl p-13">
-                      <div className="w-21 h-21 rounded-lg bg-slate-200 flex items-center justify-center shrink-0 mt-0.5">
-                        <Info size={11} className="text-slate-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-600">Tanpa Jadwal Servis Berkala</p>
-                        <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-                          Sub-kelompok ini tidak memerlukan servis atau perawatan rutin terjadwal.
-                          Jika terjadi kerusakan, gunakan menu <strong>Laporan Perawatan</strong> untuk mencatat perbaikan.
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  </select>
                 </div>
               )}
+            </div>
 
-              {/* ── SEKSI 4: UPLOAD FOTO & LAMPIRAN ───────────────────────── */}
+            {/* ── Baris 3: Merek, No Seri, Lokasi, PIC ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-13">
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8 flex items-center gap-5">
-                  <ImageIcon size={11} /> Media & Dokumen
-                </p>
-                <div className="space-y-8">
+                <label className={LABEL_CLASS}>Merek / Tipe</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Samsung / AR13"
+                  value={form.merek_tipe}
+                  onChange={e => setForm(f => ({ ...f, merek_tipe: e.target.value }))}
+                  className={INPUT_CLASS}
+                />
+              </div>
 
-                  {/* Foto Utama */}
-                  <div className="flex flex-col gap-5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                      Foto Utama Aset
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={e => {
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        if (f.size > 3 * 1024 * 1024) {
-                          alert('Ukuran foto terlalu besar. Maksimal 3MB.');
-                          e.target.value = '';
-                          return;
-                        }
-                        setFotoFile(f);
-                      }}
-                      className="w-full text-xs text-slate-500 file:mr-13 file:py-5 file:px-13 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-100 file:text-teal-700 hover:file:bg-teal-200 cursor-pointer"
-                    />
-                    {form.foto_url && !fotoFile && (
-                      <div className="flex items-center gap-5 text-[10px] text-teal-600 bg-teal-50 px-8 py-5 rounded-lg">
-                        <ImageIcon size={10} /> Foto sudah tersimpan. Unggah baru untuk mengganti.
-                      </div>
-                    )}
-                  </div>
+              <div>
+                <label className={LABEL_CLASS}>Nomor Seri / Plat</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: SN-2026-88"
+                  value={form.nomor_seri_plat}
+                  onChange={e => setForm(f => ({ ...f, nomor_seri_plat: e.target.value }))}
+                  className={INPUT_CLASS}
+                />
+              </div>
 
-                  {/* Lampiran Opsional */}
-                  <div className="flex flex-col gap-5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-5">
-                      <Paperclip size={10} />
-                      Lampiran Dokumen
-                      <span className="text-[9px] font-medium text-slate-400 normal-case tracking-normal">— Opsional (nota, surat garansi, dokumen pendukung)</span>
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
-                      onChange={e => {
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        if (f.size > 5 * 1024 * 1024) {
-                          alert('Ukuran lampiran terlalu besar. Maksimal 5MB.');
-                          e.target.value = '';
-                          return;
-                        }
-                        setLampiranFile(f);
-                      }}
-                      className="w-full text-xs text-slate-500 file:mr-13 file:py-5 file:px-13 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200 cursor-pointer"
-                    />
-                    {form.lampiran_url && !lampiranFile && (
-                      <div className="flex items-center gap-5 text-[10px] text-slate-600 bg-slate-50 px-8 py-5 rounded-lg">
-                        <Paperclip size={10} /> Dokumen lampiran sudah tersimpan.
-                        <a href={form.lampiran_url} target="_blank" rel="noopener noreferrer" className="underline text-teal-600 ml-3">Lihat</a>
-                      </div>
-                    )}
+              <div>
+                <label className={LABEL_CLASS}>Lokasi / Ruangan</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: R. Rapat Lt.2"
+                  value={form.lokasi_ruangan}
+                  onChange={e => setForm(f => ({ ...f, lokasi_ruangan: e.target.value }))}
+                  className={INPUT_CLASS}
+                />
+              </div>
+
+              <div>
+                <label className={LABEL_CLASS}>Penanggung Jawab</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Budi Santoso"
+                  value={form.penanggung_jawab}
+                  onChange={e => setForm(f => ({ ...f, penanggung_jawab: e.target.value }))}
+                  className={INPUT_CLASS}
+                />
+              </div>
+            </div>
+
+            {/* ── Baris 4: Harga, Tgl Beli, Kondisi ── */}
+            <div className="grid grid-cols-3 gap-13">
+              <div>
+                <label className={LABEL_CLASS}>Harga Beli (Rp)</label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={form.harga_beli}
+                  onChange={e => setForm(f => ({ ...f, harga_beli: e.target.value }))}
+                  className={INPUT_CLASS}
+                />
+              </div>
+
+              <div>
+                <label className={LABEL_CLASS}>Tanggal Perolehan</label>
+                <input
+                  type="date"
+                  value={form.tanggal_perolehan}
+                  onChange={e => setForm(f => ({ ...f, tanggal_perolehan: e.target.value }))}
+                  className={INPUT_CLASS}
+                />
+              </div>
+
+              <div>
+                <label className={LABEL_CLASS}>Kondisi Awal</label>
+                <select
+                  value={form.status_kondisi}
+                  onChange={e => setForm(f => ({ ...f, status_kondisi: e.target.value }))}
+                  className={SELECT_CLASS}
+                >
+                  {KONDISI_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {/* ── Config Maintenance ── */}
+            {form.sub_kelompok_id && mType !== 'tidak' && (
+              <div className="pt-2">
+                {mType === 'km' && (
+                  <div className="bg-white/80 border border-blue-100 rounded-2xl p-4 space-y-3">
+                    <p className="text-[10px] font-black text-blue-700 uppercase tracking-wider flex items-center gap-2">
+                      <Car size={14} /> Servis Berbasis Kilometer (KM)
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        placeholder="No. Polisi"
+                        value={form.no_polisi}
+                        onChange={e => setForm(f => ({ ...f, no_polisi: e.target.value }))}
+                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
+                      />
+                      <input
+                        type="number"
+                        placeholder="KM Saat Ini"
+                        value={form.km_saat_ini}
+                        onChange={e => setForm(f => ({ ...f, km_saat_ini: e.target.value }))}
+                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Interval KM Servis"
+                        value={form.interval_km}
+                        onChange={e => setForm(f => ({ ...f, interval_km: e.target.value }))}
+                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
+                      />
+                    </div>
                   </div>
+                )}
+
+                {mType === 'bulan' && (
+                  <div className="bg-white/80 border border-amber-100 rounded-2xl p-4 space-y-3">
+                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-wider flex items-center gap-2">
+                      <Clock size={14} /> Servis Berkala Bulanan
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="number"
+                        placeholder="Interval (Bulan)"
+                        value={form.interval_bulan}
+                        onChange={e => setForm(f => ({ ...f, interval_bulan: e.target.value }))}
+                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
+                      />
+                      <input
+                        type="date"
+                        value={form.tanggal_servis_terakhir}
+                        onChange={e => setForm(f => ({ ...f, tanggal_servis_terakhir: e.target.value }))}
+                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+
+
+            {/* ── Upload Foto & Lampiran (Opsional) ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
+              <div>
+                <label className={LABEL_CLASS}>Foto Aset <span className="text-rose-500">*</span></label>
+                <div className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded-xl">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    required={!form.foto_url}
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) setFotoFile(f);
+                    }}
+                    className="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-100/60 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer w-full"
+                  />
                 </div>
               </div>
 
-              {/* ── Action Buttons ─────────────────────────────────────────── */}
-              <div className="flex justify-end gap-8 pt-5 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  disabled={uploading}
-                  className="px-18 py-8 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 active:scale-95 transition-all select-none"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className="flex items-center gap-5 px-18 py-8 rounded-xl bg-teal-600 hover:bg-teal-700 text-xs font-bold text-white shadow-sm active:scale-95 transition-all select-none disabled:opacity-50"
-                >
-                  {uploading
-                    ? <><Loader2 size={12} className="animate-spin" /> Menyimpan...</>
-                    : `${editId ? 'Simpan Perubahan' : 'Daftarkan Aset'}`
-                  }
-                </button>
+              <div>
+                <label className={LABEL_CLASS}>Upload Lampiran (Opsional)</label>
+                <div className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded-xl">
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) setLampiranFile(f);
+                    }}
+                    className="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-100/60 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer w-full"
+                  />
+                </div>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+
+            {/* ── Action Buttons ── */}
+            <div className="flex justify-end gap-8 pt-5">
+              <Button type="button" variant="ghost" size="sm" onClick={closeForm} disabled={uploading}>
+                Batal
+              </Button>
+              <Button type="submit" size="sm" disabled={uploading || loadingKode}>
+                {uploading ? (
+                  <><Loader2 size={14} className="animate-spin" /> Menyimpan...</>
+                ) : editId ? 'Simpan Perubahan' : 'Simpan Aset'}
+              </Button>
+            </div>
+
+          </form>
+        </Card>
       )}
 
-      {/* ── Filter Panel ───────────────────────────────────────────────────── */}
+      {/* ── Filter Panel & Search ── */}
       <div className="bg-slate-50 p-13 rounded-2xl border border-slate-100 shadow-sm space-y-8">
         <div className="relative">
           <Search size={14} className="absolute left-13 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Cari nama, kode, merek, nomor seri, penanggung jawab, lokasi..."
+            placeholder="Cari nama, kode, merek, nomor seri, penanggung jawab, atau lokasi..."
             value={filterText}
             onChange={e => setFilterText(e.target.value)}
             className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
@@ -738,71 +732,91 @@ export default function DaftarAset() {
             onChange={e => setFilterKondisi(e.target.value)}
           >
             <option value="">Semua Kondisi</option>
-            {KONDISI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {KONDISI_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
           </select>
         </div>
       </div>
 
-      {/* ── Table / Grid ───────────────────────────────────────────────────── */}
+      {/* ── Data Grid / Table ── */}
       {filtered.length === 0 ? (
         <div className="text-center py-34 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
-          <Shield size={28} className="mx-auto mb-5 text-slate-300" />
           {filterText || filterKelompok || filterKondisi
-            ? 'Tidak ada aset yang cocok dengan filter.'
-            : 'Belum ada data aset terdaftar.'
-          }
+            ? 'Tidak ada aset yang cocok dengan filter pencarian.'
+            : 'Belum ada data aset yang terdaftar.'}
         </div>
       ) : viewMode === 'grid' ? (
         <div className="space-y-21">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
             {paged.map(a => (
-              <Card key={a.id} className="p-0 overflow-hidden flex flex-col justify-between group hover:border-slate-200 transition-colors">
-                {a.foto_url ? (
-                  <img src={a.foto_url} alt={a.nama_aset} className="w-full h-40 object-cover border-b border-slate-100" />
-                ) : (
-                  <div className="w-full h-40 bg-slate-50 border-b border-slate-100 flex flex-col items-center justify-center text-slate-300">
-                    <ImageIcon size={24} className="mb-4" />
-                    <span className="text-[10px] font-medium">Tidak ada gambar</span>
-                  </div>
-                )}
-                <div className="p-21 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start gap-3">
-                      <h4
-                        onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
-                        className="text-sm font-bold text-slate-800 line-clamp-2 cursor-pointer hover:text-teal-600 transition-colors"
-                        title={a.nama_aset}
-                      >
-                        {a.nama_aset}
-                      </h4>
-                      <span className={`text-[9px] font-bold px-5 py-2 rounded-md shrink-0 ${kondisiBadge(a.status_kondisi)}`}>
+              <div key={a.id} className="bg-white p-13 lg:p-0 rounded-2xl border border-slate-100 shadow-sm flex flex-row lg:flex-col gap-13 lg:gap-0 items-center lg:items-stretch overflow-hidden group hover:shadow-md transition-shadow">
+
+                {/* Container Gambar (89px di mobile, full width x tinggi 144px di desktop) */}
+                <div className="w-89 h-89 lg:w-full lg:h-36 bg-slate-50 rounded-xl lg:rounded-none lg:border-0 lg:border-b border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                  {a.foto_url ? (
+                    <img
+                      src={a.foto_url}
+                      alt={a.nama_aset}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <ImageIcon size={21} className="text-slate-300" />
+                  )}
+                </div>
+
+                {/* Container Konten */}
+                <div className="flex-1 min-w-0 flex flex-col justify-between py-2 lg:p-13">
+                  <div className="flex flex-col">
+                    {/* Header Mobile: Kode & Kondisi */}
+                    <div className="flex justify-between items-start gap-5 lg:hidden mb-2">
+                      <span className="text-[9px] font-mono bg-teal-50 text-teal-700 px-5 py-2 rounded-md font-bold uppercase tracking-wider truncate">
+                        {a.kode_aset || '—'}
+                      </span>
+                      <span className={cn("text-[9px] font-bold px-2 py-1 rounded-md shrink-0", kondisiBadge(a.status_kondisi))}>
                         {a.status_kondisi}
                       </span>
                     </div>
 
-                    <p className="font-mono text-[9px] text-teal-600 font-bold mt-2">{a.kode_aset || '—'}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{a.kelompok?.nama || ''}{a.sub_kelompok ? ' › ' + a.sub_kelompok.nama : ''}</p>
+                    {/* Name */}
+                    <h3 
+                      onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
+                      className="text-sm font-bold text-slate-800 leading-tight truncate mb-2 cursor-pointer hover:text-teal-600 transition-colors"
+                    >
+                      {a.nama_aset}
+                    </h3>
 
-                    <div className="mt-8 pt-8 border-t border-slate-50 space-y-3">
-                      <div className="flex justify-between text-[10px] text-slate-500">
-                        <span className="font-medium text-slate-400">Lokasi</span>
-                        <span className="font-semibold text-slate-700 truncate max-w-[120px]">{a.lokasi_ruangan}</span>
-                      </div>
-                      <div className="flex justify-between text-[10px] text-slate-500">
-                        <span className="font-medium text-slate-400">Merek</span>
-                        <span className="font-semibold text-slate-700 truncate max-w-[120px]">{a.merek_tipe || '—'}</span>
-                      </div>
-                      <div className="flex justify-between text-[10px] text-slate-500">
-                        <span className="font-medium text-slate-400">Harga Beli</span>
-                        <span className="font-bold text-teal-600 font-mono">{formatRupiah(a.harga_beli)}</span>
-                      </div>
-                    </div>
+                    {/* Kategori / Kelompok */}
+                    <p className="text-[10px] font-medium text-slate-500 truncate mt-2 lg:mt-0">
+                      <span>{a.kelompok?.nama || ''}</span>
+                      {a.sub_kelompok?.nama && (
+                        <>
+                          <span className="text-slate-300 mx-2">/</span>
+                          <span>{a.sub_kelompok.nama}</span>
+                        </>
+                      )}
+                    </p>
+
+                    {/* Kode Aset / SKU (Desktop Only) */}
+                    <h4 className="hidden lg:block text-[10px] font-mono text-slate-400 truncate mt-2">
+                      {a.kode_aset || '—'}
+                    </h4>
                   </div>
 
-                  <div className="flex justify-between items-center mt-13 pt-8 border-t border-slate-100">
-                    <span className="text-[9px] text-slate-400 font-medium flex items-center gap-2">
-                      <Calendar size={10} /> {a.tanggal_perolehan}
-                    </span>
+                  {/* Footer: Harga & Tombol Aksi */}
+                  <div className="flex justify-between items-end lg:items-end mt-8 lg:mt-13 pt-5 lg:pt-8 border-t border-slate-50">
+                    <div className="flex flex-col">
+                      <span className="hidden lg:block text-[10px] font-semibold text-slate-500 mb-3">
+                        Kondisi: <span className={cn("font-bold px-1.5 py-0.5 rounded text-[9px]", kondisiBadge(a.status_kondisi))}>{a.status_kondisi}</span>
+                      </span>
+                      <span className="text-xs font-black text-emerald-600 leading-none">
+                        {formatRupiah(a.harga_beli)}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-medium mt-1">
+                        {a.tanggal_perolehan}
+                      </span>
+                    </div>
+
                     <div className="flex gap-5">
                       <button
                         onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
@@ -815,71 +829,76 @@ export default function DaftarAset() {
                         <>
                           <button
                             onClick={() => handleEdit(a)}
-                            className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors"
+                            className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center"
                             title="Edit"
                           >
-                            <Pencil size={12} />
+                            <Pencil size={13} strokeWidth={2.5} />
                           </button>
                           <button
                             onClick={() => handleDelete(a)}
-                            className="w-21 h-21 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
+                            className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center"
                             title="Hapus"
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={13} strokeWidth={2.5} />
                           </button>
                         </>
                       )}
                     </div>
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
-          <Pagination total={filtered.length} perPage={perPage} currentPage={currentPage} onPageChange={setCurrentPage} onPerPageChange={setPerPage} />
+
+          <Pagination
+            total={filtered.length}
+            perPage={perPage}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPerPage}
+          />
         </div>
       ) : (
-        <div className="space-y-21">
-          <Table headers={['Kode / Aset', 'Kelompok', 'Merek / No.Seri', 'Lokasi', 'Kondisi', 'Harga Beli', '']}>
+        <Card className="p-0 overflow-hidden shadow-sm border-slate-200 rounded-2xl">
+          <Table headers={['Kode / Nama Aset', 'Kelompok', 'Merek / No. Seri', 'Lokasi & PIC', 'Kondisi', 'Harga Beli', 'Aksi']}>
             {paged.map(a => (
               <tr key={a.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-13 py-13">
+                <td className="px-4 py-3">
                   <p
                     onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
-                    className="text-sm font-semibold text-slate-700 cursor-pointer hover:text-teal-600 transition-colors"
+                    className="text-xs font-bold text-slate-800 cursor-pointer hover:text-teal-600 transition-colors"
                   >
                     {a.nama_aset}
                   </p>
-                  <p className="font-mono text-[9px] text-teal-600 font-bold mt-1">{a.kode_aset || '—'}</p>
-                  <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-2">
-                    <Calendar size={9} /> {a.tanggal_perolehan}
-                  </p>
+                  <p className="font-mono text-[10px] text-teal-600 font-bold mt-0.5">{a.kode_aset || '—'}</p>
                 </td>
-                <td className="px-13 py-13">
-                  <p className="text-xs font-medium text-slate-600">{a.kelompok?.nama || '—'}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">{a.sub_kelompok?.nama || ''}</p>
+                <td className="px-4 py-3">
+                  <p className="text-xs font-medium text-slate-700">{a.kelompok?.nama || '—'}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{a.sub_kelompok?.nama || ''}</p>
                 </td>
-                <td className="px-13 py-13">
-                  <p className="text-xs font-medium text-slate-600">{a.merek_tipe || '—'}</p>
-                  <p className="font-mono text-[10px] text-slate-400 mt-1">{a.nomor_seri_plat || '—'}</p>
+                <td className="px-4 py-3">
+                  <p className="text-xs font-medium text-slate-700">{a.merek_tipe || '—'}</p>
+                  <p className="font-mono text-[10px] text-slate-400 mt-0.5">{a.nomor_seri_plat || '—'}</p>
                 </td>
-                <td className="px-13 py-13">
-                  <p className="text-xs text-slate-600">{a.lokasi_ruangan}</p>
+                <td className="px-4 py-3">
+                  <p className="text-xs text-slate-700">{a.lokasi_ruangan || '—'}</p>
                   {a.penanggung_jawab && (
-                    <p className="text-[10px] text-slate-400 mt-1">{a.penanggung_jawab}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{a.penanggung_jawab}</p>
                   )}
                 </td>
-                <td className="px-13 py-13">
-                  <span className={`text-[10px] font-bold px-5 py-2 rounded-md ${kondisiBadge(a.status_kondisi)}`}>
+                <td className="px-4 py-3">
+                  <span className={cn("text-[9px] font-bold px-2 py-1 rounded-md", kondisiBadge(a.status_kondisi))}>
                     {a.status_kondisi}
                   </span>
                 </td>
-                <td className="px-13 py-13 font-mono text-xs font-bold text-slate-700">{formatRupiah(a.harga_beli)}</td>
-                <td className="px-13 py-13">
-                  <div className="flex gap-5">
+                <td className="px-4 py-3 font-mono text-xs font-bold text-emerald-600">
+                  {formatRupiah(a.harga_beli)}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
-                      className="text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors px-8 py-5 flex items-center justify-center text-[10px] font-bold"
-                      title="Detail"
+                      className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-[10px] rounded-lg transition-colors"
                     >
                       Detail
                     </button>
@@ -887,17 +906,15 @@ export default function DaftarAset() {
                       <>
                         <button
                           onClick={() => handleEdit(a)}
-                          className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors"
-                          title="Edit"
+                          className="p-1 text-slate-400 hover:text-teal-600 rounded-lg transition-colors"
                         >
-                          <Pencil size={12} />
+                          <Pencil size={13} />
                         </button>
                         <button
                           onClick={() => handleDelete(a)}
-                          className="w-21 h-21 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
-                          title="Hapus"
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
                       </>
                     )}
@@ -906,30 +923,43 @@ export default function DaftarAset() {
               </tr>
             ))}
           </Table>
-          <Pagination total={filtered.length} perPage={perPage} currentPage={currentPage} onPageChange={setCurrentPage} onPerPageChange={setPerPage} />
-        </div>
+
+          <div className="p-3 border-t border-slate-100">
+            <Pagination
+              total={filtered.length}
+              perPage={perPage}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              onPerPageChange={setPerPage}
+            />
+          </div>
+        </Card>
       )}
 
-      {/* ── Modal Hapus ────────────────────────────────────────────────────── */}
+      {/* ── Modal Konfirmasi Hapus ── */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => { setIsDeleteModalOpen(false); setItemToDelete(null); }} />
-          <div className="relative bg-white rounded-3xl shadow-xl border border-slate-100 w-full max-w-md p-21 flex flex-col gap-13 z-10 text-center items-center">
-            <div className="w-55 h-55 rounded-2xl bg-red-50 flex items-center justify-center">
-              <Trash2 size={24} className="text-red-500" />
-            </div>
-            <div>
-              <h3 className="text-lg font-black text-slate-800 tracking-tight mb-8">Hapus Aset</h3>
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => {
+              setIsDeleteModalOpen(false);
+              setItemToDelete(null);
+            }}
+          />
+          <div className="relative bg-white rounded-3xl shadow-xl border border-slate-100 w-full max-w-md p-21 flex flex-col gap-13 z-10 animate-in fade-in zoom-in-95 duration-150 text-center items-center">
+            <div className="mt-8">
+              <h3 className="text-lg font-black text-slate-800 tracking-tight mb-8">Hapus Data Aset?</h3>
               <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
-                Yakin ingin menghapus aset <span className="font-bold text-slate-700">"{itemToDelete?.nama_aset}"</span>
-                {itemToDelete?.kode_aset && <span className="font-mono text-teal-600"> ({itemToDelete.kode_aset})</span>}?
-                <br />Data ini akan dihapus secara permanen.
+                Yakin ingin menghapus aset <span className="font-bold text-slate-700">"{itemToDelete?.nama_aset}"</span>? Tindakan ini tidak dapat dibatalkan.
               </p>
             </div>
-            <div className="flex items-center justify-center gap-8 mt-5 w-full">
+            <div className="flex items-center justify-center gap-8 mt-13 w-full">
               <button
                 type="button"
-                onClick={() => { setIsDeleteModalOpen(false); setItemToDelete(null); }}
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setItemToDelete(null);
+                }}
                 className="px-18 py-8 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 active:scale-95 transition-all select-none"
               >
                 Batal
@@ -946,16 +976,13 @@ export default function DaftarAset() {
         </div>
       )}
 
-      {/* ── Modal Kategori ──────────────────────────────────────────────────── */}
+      {/* Modal Kategori */}
       {showKategoriModal && (
         <ModalKategoriAset
-          onClose={() => {
-            setShowKategoriModal(false);
-            fetchKelompokAset();
-            fetchSubKelompokAset();
-          }}
+          onClose={() => setShowKategoriModal(false)}
         />
       )}
+
     </div>
   );
 }

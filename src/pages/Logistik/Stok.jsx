@@ -5,9 +5,12 @@ import Button from '../../components/ui/Button';
 import { Select } from '../../components/ui/Input';
 import Pagination from '../../components/ui/Pagination';
 import { KELOMPOK_BARANG } from '../../utils/constants';
+import { useToast } from '../../components/ui/Toast';
 
 export default function Stok() {
   const { barang, addMasuk, addKeluar } = useLogistikStore();
+  const toast = useToast();
+
   const [kode, setKode] = useState('');
   const [jenis, setJenis] = useState('masuk');
   const [jumlah, setJumlah] = useState('');
@@ -49,19 +52,19 @@ export default function Stok() {
 
     // Validasi: barang harus dipilih
     if (!kode || !selected) {
-      alert('Pilih barang terlebih dahulu!');
+      toast.warning('Pilih barang terlebih dahulu!');
       return;
     }
 
     // Validasi: jumlah harus diisi dan lebih dari 0
     if (!jumlah || Number(jumlah) <= 0) {
-      alert('Jumlah harus lebih dari 0!');
+      toast.warning('Jumlah harus lebih dari 0!');
       return;
     }
 
     // Validasi: kalau jenis keluar, stok harus cukup
     if (jenis === 'keluar' && selected.stok_saat_ini < Number(jumlah)) {
-      alert(`Stok tidak mencukupi! Sisa yang tersedia: ${selected.stok_saat_ini}`);
+      toast.error(`Stok tidak mencukupi! Sisa yang tersedia: ${selected.stok_saat_ini}`);
       return;
     }
 
@@ -71,7 +74,7 @@ export default function Stok() {
       penerima: `Penyesuaian Admin (${jenis})`,
     };
     jenis === 'masuk' ? addMasuk(payload) : addKeluar(payload);
-    alert('Stok berhasil disesuaikan!');
+    toast.success(`Stok ${selected.nama_barang} berhasil disesuaikan (${jenis} ${jumlah} ${selected.satuan_barang || 'pcs'})!`);
     setKode(''); setJumlah('');
   };
 

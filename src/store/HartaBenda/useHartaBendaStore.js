@@ -133,19 +133,24 @@ const useHartaBendaStore = create((set, get) => ({
     addAset: async (payload) => {
         const userId = get().getCurrentUserId();
 
+        // Sanitasi tanggal string kosong ("") menjadi null
+        const sanitizedPayload = { ...payload };
+        if (!sanitizedPayload.tanggal_perolehan) sanitizedPayload.tanggal_perolehan = null;
+        if (!sanitizedPayload.tanggal_servis_terakhir) sanitizedPayload.tanggal_servis_terakhir = null;
+
         // Jika kode_aset belum ada di payload, generate dari RPC
-        let kodeAset = payload.kode_aset;
-        if (!kodeAset && payload.kelompok_id) {
+        let kodeAset = sanitizedPayload.kode_aset;
+        if (!kodeAset && sanitizedPayload.kelompok_id) {
             const { data: kodeData } = await supabase.rpc('generate_kode_aset', {
-                p_kelompok_id: Number(payload.kelompok_id),
+                p_kelompok_id: Number(sanitizedPayload.kelompok_id),
             });
             kodeAset = kodeData || null;
         }
 
         const insertData = {
-            ...payload,
+            ...sanitizedPayload,
             kode_aset: kodeAset || null,
-            status: payload.status || 'aktif',   // default wajib ada
+            status: sanitizedPayload.status || 'aktif',   // default wajib ada
             created_by: userId,
             updated_by: userId,
         };
@@ -170,6 +175,8 @@ const useHartaBendaStore = create((set, get) => ({
     updateAset: async (id, payload) => {
         const userId = get().getCurrentUserId();
         const updateData = { ...payload, updated_by: userId };
+        if (!updateData.tanggal_perolehan) updateData.tanggal_perolehan = null;
+        if (!updateData.tanggal_servis_terakhir) updateData.tanggal_servis_terakhir = null;
         // Hapus field yang tidak boleh diupdate
         delete updateData.id;
         delete updateData.created_at;

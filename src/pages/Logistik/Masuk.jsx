@@ -11,11 +11,14 @@ import LogCard from '../../components/ui/LogCard';
 import Pagination from '../../components/ui/Pagination';
 import BarcodeScanner from '../../components/ui/BarcodeScanner';
 import { KELOMPOK_BARANG } from '../../utils/constants';
+import { useToast } from '../../components/ui/Toast';
 
 const EMPTY = { kode_barang: '', jumlah: '', tanggal: new Date().toISOString().split('T')[0], penerima: '' };
 
 export default function Masuk() {
   const { masuk, addMasuk, updateLogTransaksi, deleteLogTransaksi, barang } = useLogistikStore();
+  const toast = useToast();
+
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [oldItem, setOldItem] = useState(null);
@@ -58,8 +61,10 @@ export default function Masuk() {
     e.preventDefault();
     if (editId) {
       updateLogTransaksi(editId, oldItem, { ...form, jenis_transaksi: 'Masuk' });
+      toast.success('Data barang masuk berhasil diperbarui!');
     } else {
       addMasuk(form);
+      toast.success('Transaksi barang masuk berhasil dicatat!');
     }
     setOpen(false);
     setEditId(null);
@@ -89,6 +94,7 @@ export default function Masuk() {
   const handleConfirmDelete = () => {
     if (itemToDelete) {
       deleteLogTransaksi(itemToDelete.id, itemToDelete);
+      toast.success('Data barang masuk berhasil dihapus!');
       setIsDeleteModalOpen(false);
       setItemToDelete(null);
     }
@@ -102,7 +108,7 @@ export default function Masuk() {
       setForm(prev => ({ ...prev, kode_barang: scannedCode }));
       setOpen(true);
     } else {
-      alert(`Barang dengan kode "${scannedCode}" tidak terdaftar di database.`);
+      toast.warning(`Barang dengan kode "${scannedCode}" tidak terdaftar di database.`);
     }
   };
 

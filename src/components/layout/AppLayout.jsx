@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Package, TrendingDown, TrendingUp,
   Layers3, ClipboardList, LogOut, Boxes,
-  Building2, Archive, Wrench, ChevronDown
+  Building2, Archive, Wrench, ChevronDown, ShieldAlert
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 // PERUBAHAN: Mengubah pemanggilan ke store logistik yang baru
 import useLogistikStore from '../../store/Logistik/useLogistikStore';
@@ -33,6 +34,7 @@ const NAV_GROUPS = [
       { name: 'Aset', path: '/aset/daftar', icon: Archive, role: 'Admin' },
       { name: 'Perawatan', path: '/aset/perawatan', icon: Wrench, role: 'Admin' },
       { name: 'Aktivitas', path: '/aset/aktivitas', icon: ClipboardList, role: 'Admin' },
+      { name: 'Persetujuan', path: '/aset/persetujuan', icon: ShieldAlert, role: 'Admin', badgeKey: 'persetujuan' },
       { name: 'Aktivitas', path: '/harta-benda/pinjam', icon: ClipboardList, role: ['User', 'guest'] },
       { name: 'Perawatan', path: '/harta-benda/lapor', icon: Wrench, role: ['User', 'guest'] },
     ],
@@ -42,6 +44,9 @@ const NAV_GROUPS = [
 export default function AppLayout() {
   const { currentUser, logout, fetchData } = useLogistikStore();
   const location = useLocation();
+
+  // Badge count untuk menu Persetujuan
+  const [persetujuanCount, setPersetujuanCount] = useState(0);
 
   const activeGroupKey = NAV_GROUPS.find(g =>
     g.items.some(item =>
@@ -65,6 +70,22 @@ export default function AppLayout() {
       fetchDataHartaBenda();
     }
   }, [currentUser, fetchData, fetchDataHartaBenda]);
+
+  // Fetch badge count (peminjaman pending + laporan menunggu)
+  useEffect(() => {
+    if (currentUser?.role !== 'Admin') return;
+    const fetchBadge = async () => {
+      const [p, k] = await Promise.all([
+        supabase.from('peminjaman_aset').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('laporan_kerusakan').select('id', { count: 'exact', head: true }).eq('status', 'menunggu'),
+      ]);
+      setPersetujuanCount((p.count || 0) + (k.count || 0));
+    };
+    fetchBadge();
+    // Refresh setiap 60 detik
+    const interval = setInterval(fetchBadge, 60000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   const filterByRole = (items) => items.filter(n => {
     if (!n.role) return true;
@@ -124,7 +145,7 @@ export default function AppLayout() {
 
                 {isOpen && (
                   <div className="mt-5 space-y-3 pl-8">
-                    {items.map(({ name, path, icon: Icon, end }) => (
+                    {items.map(({ name, path, icon: Icon, end, badgeKey }) => (
                       <NavLink
                         key={path}
                         to={path}
@@ -141,7 +162,12 @@ export default function AppLayout() {
                         {({ isActive }) => (
                           <>
                             <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                            <span>{name}</span>
+                            <span className="flex-1">{name}</span>
+                            {badgeKey === 'persetujuan' && persetujuanCount > 0 && (
+                              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-3 bg-rose-500 text-white text-[9px] font-black rounded-full">
+                                {persetujuanCount > 99 ? '99+' : persetujuanCount}
+                              </span>
+                            )}
                           </>
                         )}
                       </NavLink>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Download, Pencil, Trash2, Search, Wrench } from 'lucide-react';
+import { Plus, Download, Pencil, Trash2, Search, Wrench, ShieldCheck, Gauge, Clock } from 'lucide-react';
 import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
 import { Card } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -8,39 +8,21 @@ import { Table } from '../../components/ui/Table';
 import { Input, Select } from '../../components/ui/Input';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 import Pagination from '../../components/ui/Pagination';
+import { cn } from '../../utils/cn';
+import { supabase } from '../../lib/supabase';
 
 const EMPTY = {
   id_aset: '',
-  kategori_biaya: '',
+  kategori_biaya: 'Perbaikan',
+  km_saat_servis: '',
   total_biaya: '',
   tanggal: new Date().toISOString().split('T')[0],
   keterangan: '',
 };
 
-const KATEGORI_BIAYA = [
-  { label: 'Servis Rutin', value: 'Servis Rutin' },
-  { label: 'Perbaikan', value: 'Perbaikan' },
-  { label: 'Pajak & Dokumen', value: 'Pajak & Dokumen' },
-  { label: 'Bahan Bakar (BBM)', value: 'Bahan Bakar (BBM)' },
-];
-
-const parseStatus = (keterangan) => {
-  const statusMatch = keterangan?.match(/\[Status:\s*([^\]]+)\]/);
-  return statusMatch ? statusMatch[1] : null;
-};
-
-const getCleanKeterangan = (keterangan) => {
-  if (!keterangan) return '-';
-  const kendalaMatch = keterangan.match(/Kendala:\s*(.*)$/);
-  if (kendalaMatch) return kendalaMatch[1];
-  return keterangan;
-};
-
 export default function Perawatan() {
-  // 1. UBAH DI SINI: panggil 'aset' dari store, bukan 'daftarAset'
   const { aset, logPerawatan, addPerawatan, updatePerawatan, deletePerawatan, fetchDataHartaBenda } = useHartaBendaStore();
 
-  // Amankan data aset menjadi array kosong jika store belum termuat sempurna
   const dataAsetAman = aset || [];
 
   const [open, setOpen] = useState(false);
@@ -59,57 +41,137 @@ export default function Perawatan() {
 
   useEffect(() => { setCurrentPage(1); }, [filterText, filterKategori, filterDate]);
 
-  // 2. UBAH DI SINI: Gunakan 'dataAsetAman' dan tambahkan pengecekan kolom kode yang fleksibel
+  // Options unit spesifik: {nama_aset} ({kode_aset})
   const asetOptions = dataAsetAman.map(a => ({
-    label: `${a.nama_aset} — ${a.kode || a.kode_aset || a.no_aset || a.id || 'Tanpa kode'}`,
-    value: a.id,
+    label: `${a.nama_aset} (${a.kode_aset || a.id})`,
+    value: String(a.id),
   }));
 
-  // 3. UBAH DI SINI: Gunakan 'dataAsetAman' untuk mencari nama
-  const getAsetName = (idAset) => dataAsetAman.find(a => String(a.id) === String(idAset))?.nama_aset || '-';
+  // Aset yang saat ini dipilih pada form
+  const selectedAset = dataAsetAman.find(a => String(a.id) === String(form.id_aset));
+  const selectedMaintenanceType = selectedAset?.sub_kelompok?.maintenance_type || selectedAset?.maintenance_type || 'tidak';
+  const isServisRutinAllowed = selectedMaintenanceType !== 'tidak' && selectedMaintenanceType !== null;
+
+  // Opsi Jenis Perawatan (Dinamis berdasarkan unit aset yang dipilih)
+  const jenisPerawatanOptions = isServisRutinAllowed
+    ? [
+      { label: 'Perbaikan (karena rusak)', value: 'Perbaikan' },
+      { label: 'Servis rutin (preventif)', value: 'Servis Rutin' },
+    ]
+    : [
+      { label: 'Perbaikan (karena rusak)', value: 'Perbaikan' },
+    ];
+
+  const getAsetObject = (idAset) => dataAsetAman.find(a => String(a.id) === String(idAset));
+  const getAsetName = (idAset) => getAsetObject(idAset)?.nama_aset || '-';
 
   const formatRupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
 
   const closeForm = () => { setOpen(false); setEditId(null); setForm(EMPTY); };
 
+  // Handler saat unit aset dipilih di dropdown
+  const handleAsetSelect = (e) => {
+    const selectedId = e.target.value;
+    const targetAset = dataAsetAman.find(a => String(a.id) === String(selectedId));
+    const mType = targetAset?.sub_kelompok?.maintenance_type || targetAset?.maintenance_type || 'tidak';
+
+    setForm(f => {
+      let newKategori = f.kategori_biaya;
+      if (mType === 'tidak' && newKategori === 'Servis Rutin') {
+        newKategori = 'Perbaikan';
+      }
+      return {
+        ...f,
+        id_aset: selectedId,
+        kategori_biaya: newKategori || 'Perbaikan',
+        km_saat_servis: targetAset?.km_saat_ini || '',
+      };
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = { ...form, total_biaya: Number(form.total_biaya) };
+
+    if (!form.id_aset) {
+      alert('Silakan pilih unit aset terlebih dahulu.');
+      return;
+    }
+
+    if (!form.kategori_biaya) {
+      alert('Silakan pilih jenis perawatan.');
+      return;
+    }
+
+    if (form.kategori_biaya === 'Servis Rutin' && selectedMaintenanceType === 'km' && (!form.km_saat_servis || Number(form.km_saat_servis) < 0)) {
+      alert('Nilai KM saat servis wajib diisi!');
+      return;
+    }
+
+    // Payload untuk insert/update log_perawatan_aset
+    const logPayload = {
+      id_aset: form.id_aset,
+      kategori_biaya: form.kategori_biaya,
+      total_biaya: Number(form.total_biaya || 0),
+      tanggal: form.tanggal || new Date().toISOString().split('T')[0],
+      keterangan: form.kategori_biaya === 'Servis Rutin' && selectedMaintenanceType === 'km' && form.km_saat_servis
+        ? `[KM Servis: ${form.km_saat_servis}] ${form.keterangan || ''}`.trim()
+        : (form.keterangan || ''),
+    };
+
     let ok;
     if (editId) {
-      ok = await updatePerawatan(editId, payload);
+      ok = await updatePerawatan(editId, logPayload);
     } else {
-      ok = await addPerawatan(payload);
+      ok = await addPerawatan(logPayload);
     }
+
     if (ok) {
+      // ── Otomatis Update Tabel Assets ──────────────────────────────────
+      // a. Update status_kondisi menjadi "Baik"
+      const assetUpdateData = {
+        status_kondisi: 'Baik',
+      };
+
+      // b. Jika Servis Rutin & maintenance_type = 'km' -> update km_saat_ini
+      if (form.kategori_biaya === 'Servis Rutin' && selectedMaintenanceType === 'km' && form.km_saat_servis) {
+        assetUpdateData.km_saat_ini = Number(form.km_saat_servis);
+      }
+
+      // c. Jika Servis Rutin & maintenance_type = 'bulan' -> update tanggal_servis_terakhir
+      if (form.kategori_biaya === 'Servis Rutin' && selectedMaintenanceType === 'bulan') {
+        assetUpdateData.tanggal_servis_terakhir = form.tanggal || new Date().toISOString().split('T')[0];
+      }
+
+      try {
+        const { error: updateErr } = await supabase
+          .from('assets')
+          .update(assetUpdateData)
+          .eq('id', form.id_aset);
+
+        if (updateErr) {
+          console.error('Update asset status error:', updateErr);
+        }
+      } catch (err) {
+        console.error('Update asset status catch error:', err);
+      }
+
       await fetchDataHartaBenda();
       closeForm();
     }
   };
 
-  const handleUpdateStatus = async (item, action) => {
-    let newStatus = action;
-    if (action === 'Setujui') newStatus = 'Sedang Diperbaiki';
-    else if (action === 'Tolak') newStatus = 'Ditolak';
-    else if (action === 'Selesaikan') newStatus = 'Selesai';
-
-    let newKeterangan = item.keterangan || '';
-    if (newKeterangan.match(/\[Status:\s*([^\]]+)\]/)) {
-      newKeterangan = newKeterangan.replace(/\[Status:\s*([^\]]+)\]/, `[Status: ${newStatus}]`);
-    } else {
-      newKeterangan = `[Status: ${newStatus}] ` + newKeterangan;
-    }
-    await updatePerawatan(item.id, { keterangan: newKeterangan });
-    await fetchDataHartaBenda();
-  };
-
   const handleEdit = (item) => {
+    const kmMatch = item.keterangan?.match(/\[KM Servis:\s*(\d+)\]/);
+    const kmValue = kmMatch ? kmMatch[1] : '';
+    const cleanKet = item.keterangan ? item.keterangan.replace(/\[KM Servis:\s*\d+\]\s*/, '') : '';
+
     setForm({
-      id_aset: item.id_aset || '',
-      kategori_biaya: item.kategori_biaya || '',
+      id_aset: String(item.id_aset || ''),
+      kategori_biaya: item.kategori_biaya || 'Perbaikan',
+      km_saat_servis: kmValue,
       total_biaya: item.total_biaya || '',
-      tanggal: item.tanggal || '',
-      keterangan: item.keterangan || '',
+      tanggal: item.tanggal || new Date().toISOString().split('T')[0],
+      keterangan: cleanKet,
     });
     setEditId(item.id);
     setOpen(true);
@@ -130,7 +192,9 @@ export default function Perawatan() {
     const exportData = filtered.map(p => ({
       Tanggal: p.tanggal,
       Aset: getAsetName(p.id_aset),
-      Kategori: p.kategori_biaya,
+      Kode_Aset: getAsetObject(p.id_aset)?.kode_aset || '-',
+      Lokasi: getAsetObject(p.id_aset)?.lokasi_ruangan || '-',
+      Jenis_Perawatan: p.kategori_biaya,
       Total_Biaya: p.total_biaya,
       Keterangan: p.keterangan,
     }));
@@ -140,9 +204,16 @@ export default function Perawatan() {
   };
 
   const filtered = (logPerawatan || []).filter(p => {
-    const asetNama = getAsetName(p.id_aset).toLowerCase();
-    const text = (asetNama + (p.keterangan || '') + (p.kategori_biaya || '')).toLowerCase();
-    const matchText = text.includes(filterText.toLowerCase());
+    const targetAset = getAsetObject(p.id_aset);
+    const textSearch = (
+      (targetAset?.nama_aset || '') +
+      (targetAset?.kode_aset || '') +
+      (targetAset?.lokasi_ruangan || '') +
+      (p.keterangan || '') +
+      (p.kategori_biaya || '')
+    ).toLowerCase();
+
+    const matchText = textSearch.includes(filterText.toLowerCase());
     const matchKat = filterKategori ? p.kategori_biaya === filterKategori : true;
     const matchDate = filterDate ? p.tanggal === filterDate : true;
     return matchText && matchKat && matchDate;
@@ -151,164 +222,296 @@ export default function Perawatan() {
   const totalBiaya = filtered.reduce((sum, p) => sum + (p.total_biaya || 0), 0);
   const paged = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
+  const statusBadgeStyle = (status) => {
+    switch (status) {
+      case 'Baik':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'Rusak Ringan':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'Rusak Berat':
+        return 'bg-rose-50 text-rose-700 border-rose-200';
+      case 'Dalam Perbaikan':
+        return 'bg-sky-50 text-sky-700 border-sky-200';
+      case 'Dihentikan':
+        return 'bg-slate-100 text-slate-600 border-slate-200';
+      default:
+        return 'bg-slate-50 text-slate-600 border-slate-200';
+    }
+  };
+
   return (
     <div className="space-y-21">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-slate-800 tracking-tight">Perawatan & Biaya Aset</h1>
-          <p className="text-xs text-slate-400 mt-2">{filtered.length} catatan · Total: <span className="font-bold text-slate-600">{formatRupiah(totalBiaya)}</span></p>
+          <h1 className="text-xl font-black text-slate-800 tracking-tight">Perawatan &amp; Biaya Aset</h1>
+          <p className="text-xs text-slate-400 mt-2">
+            {filtered.length} catatan · Total Biaya: <span className="font-bold text-emerald-600">{formatRupiah(totalBiaya)}</span>
+          </p>
         </div>
         <div className="flex gap-8">
           <Button variant="ghost" size="icon" onClick={handleExport} title="Export Excel">
             <Download size={16} />
           </Button>
-          <Button size="sm" onClick={() => { setEditId(null); setForm(EMPTY); setOpen(true); }}
-            className="bg-amber-600 hover:bg-amber-700 shadow-amber-500/20">
-            <Plus size={15} /> Catat Biaya
+          <Button
+            size="sm"
+            onClick={() => { setEditId(null); setForm(EMPTY); setOpen(true); }}
+            className="bg-teal-600 hover:bg-teal-700 shadow-teal-500/20 text-white"
+          >
+            <Plus size={15} /> Catat Perawatan
           </Button>
         </div>
       </div>
 
-      {/* Form */}
+      {/* Form Catat Perawatan / Biaya */}
       {open && (
-        <Card className="border-amber-200 bg-amber-50/40 p-21">
-          <p className="text-base font-bold text-slate-700 mb-13">
-            {editId ? '✏️   Edit Catatan Biaya' : '🔧   Catat Biaya Perawatan'}
-          </p>
+        <Card className="border-orange-200 bg-orange-50/30 p-21">
+          <div className="flex items-center justify-between mb-13">
+            <p className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Wrench size={18} className="text-orange-600" />
+              Catat Biaya Perawatan
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-13">
-            <SearchableSelect label="Pilih Aset" required options={asetOptions}
+            {/* Field 1: Pilih Aset */}
+            <SearchableSelect
+              label="Aset"
+              required
+              options={asetOptions}
               value={form.id_aset}
-              onChange={e => setForm({ ...form, id_aset: e.target.value })} />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-13">
-              <Select label="Kategori Biaya" required options={KATEGORI_BIAYA}
+              onChange={handleAsetSelect}
+            />
+
+            {/* Kartu Informasi Servis Berbasis Kilometer (KM) ketika kendaraan/aset KM dipilih */}
+            {selectedAset && selectedMaintenanceType === 'km' && (
+              <div className="bg-sky-50/80 border border-sky-200/90 rounded-2xl p-13 space-y-13 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-sky-800 flex items-center gap-2">
+                    <Gauge size={16} className="text-sky-600" /> Servis Berbasis Kilometer (KM)
+                  </p>
+                  {(selectedAset.no_polisi || selectedAset.nomor_seri_plat) && (
+                    <span className="text-[10px] font-mono font-bold bg-white text-sky-700 px-8 py-3 rounded-md border border-sky-200 shadow-xs">
+                      Plat / No. Seri: {selectedAset.no_polisi || selectedAset.nomor_seri_plat}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-13 text-xs">
+                  <div className="bg-white p-13 rounded-xl border border-sky-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">KM Terakhir Tercatat</span>
+                    <span className="text-sm font-mono font-black text-slate-800 mt-1">{selectedAset.km_saat_ini || 0} KM</span>
+                  </div>
+
+                  <div className="bg-white p-13 rounded-xl border border-sky-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Interval Servis Rutin</span>
+                    <span className="text-sm font-mono font-black text-sky-700 mt-1">{selectedAset.interval_km || 5000} KM</span>
+                  </div>
+
+                  <div className="bg-white p-13 rounded-xl border border-sky-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Target KM Servis Berikutnya</span>
+                    <span className="text-sm font-mono font-black text-emerald-600 mt-1">
+                      {Number(form.km_saat_servis || selectedAset.km_saat_ini || 0) + Number(selectedAset.interval_km || 5000)} KM
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Field 2 & 3: Jenis Perawatan & KM saat servis (jika berlaku) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
+              <Select
+                label="Jenis Perawatan"
+                required
+                options={jenisPerawatanOptions}
                 value={form.kategori_biaya}
-                onChange={e => setForm({ ...form, kategori_biaya: e.target.value })} />
-              <Input label="Total Biaya (Rp)" type="number" required value={form.total_biaya}
-                onChange={e => setForm({ ...form, total_biaya: e.target.value })} />
-              <Input label="Tanggal" type="date" required value={form.tanggal}
-                onChange={e => setForm({ ...form, tanggal: e.target.value })} />
+                onChange={e => setForm({ ...form, kategori_biaya: e.target.value })}
+              />
+
+              {/* Field Tambahan "KM saat servis" (HANYA jika Jenis = Servis Rutin & maintenance_type = 'km') */}
+              {form.kategori_biaya === 'Servis Rutin' && selectedMaintenanceType === 'km' && (
+                <Input
+                  label="KM saat servis"
+                  type="number"
+                  required
+                  placeholder={selectedAset?.km_saat_ini ? String(selectedAset.km_saat_ini) : '0'}
+                  value={form.km_saat_servis}
+                  onChange={e => setForm({ ...form, km_saat_servis: e.target.value })}
+                />
+              )}
             </div>
-            <Input label="Keterangan" value={form.keterangan}
-              onChange={e => setForm({ ...form, keterangan: e.target.value })} />
+
+            {/* Field 4 & 5: Biaya (Rp) & Tanggal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
+              <Input
+                label="Biaya (Rp)"
+                type="number"
+                required
+                placeholder="Contoh: 150000"
+                value={form.total_biaya}
+                onChange={e => setForm({ ...form, total_biaya: e.target.value })}
+              />
+              <Input
+                label="Tanggal Perawatan"
+                type="date"
+                required
+                value={form.tanggal}
+                onChange={e => setForm({ ...form, tanggal: e.target.value })}
+              />
+            </div>
+
+            {/* Field 6: Keterangan */}
+            <Input
+              label="Keterangan"
+              placeholder="Deskripsikan pekerjaan yang dilakukan..."
+              value={form.keterangan}
+              onChange={e => setForm({ ...form, keterangan: e.target.value })}
+            />
+
             <div className="flex justify-end gap-8 pt-5">
-              <Button type="button" variant="ghost" size="sm" onClick={closeForm}>Batal</Button>
-              <Button type="submit" size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">Simpan</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={closeForm}>
+                Batal
+              </Button>
+              <Button type="submit" size="sm" className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+                Simpan Catatan
+              </Button>
             </div>
           </form>
         </Card>
       )}
 
-      {/* Filter */}
+      {/* Baris Search & Filter */}
       <div className="bg-slate-50 p-13 rounded-2xl border border-slate-100 shadow-sm space-y-8">
         <div className="relative">
           <Search size={14} className="absolute left-13 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input type="text" placeholder="Cari nama aset atau keterangan..."
-            value={filterText} onChange={e => setFilterText(e.target.value)}
-            className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition-all" />
+          <input
+            type="text"
+            placeholder="Cari unit aset, kode, lokasi, atau keterangan..."
+            value={filterText}
+            onChange={e => setFilterText(e.target.value)}
+            className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
+          />
         </div>
         <div className="grid grid-cols-2 gap-8">
-          <select className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition-all text-slate-600 font-medium"
-            value={filterKategori} onChange={e => setFilterKategori(e.target.value)}>
-            <option value="">Semua Kategori</option>
-            {KATEGORI_BIAYA.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <select
+            className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
+            value={filterKategori}
+            onChange={e => setFilterKategori(e.target.value)}
+          >
+            <option value="">Semua Jenis Perawatan</option>
+            <option value="Perbaikan">Perbaikan</option>
+            <option value="Servis Rutin">Servis Rutin</option>
           </select>
-          <input type="date"
-            className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none transition-all text-slate-600 font-medium"
-            value={filterDate} onChange={e => setFilterDate(e.target.value)} />
+          <input
+            type="date"
+            className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+          />
         </div>
       </div>
 
-      {/* Table */}
+      {/* Tabel Data Perawatan */}
       {filtered.length === 0 ? (
         <div className="text-center py-34 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
           <Wrench size={28} className="mx-auto mb-5 text-slate-300" />
-          Belum ada catatan perawatan.
+          Belum ada catatan perawatan aset.
         </div>
       ) : (
         <div className="space-y-21">
-          <Table headers={['Tanggal', 'Aset', 'Kategori Biaya', 'Total Biaya', 'Status', 'Keterangan', 'Aksi']}>
+          <Table headers={['Tanggal', 'Unit Aset & Lokasi', 'Jenis Perawatan', 'Total Biaya', 'Kondisi Aset', 'Keterangan', 'Aksi']}>
             {paged.map(p => {
-              const status = parseStatus(p.keterangan);
+              const asetObj = getAsetObject(p.id_aset);
+              const kondisiAset = asetObj?.status_kondisi || 'Baik';
               return (
-              <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{p.tanggal}</td>
-                <td className="px-13 py-13 text-sm font-semibold text-slate-700">{getAsetName(p.id_aset)}</td>
-                <td className="px-13 py-13">
-                  <span className={`text-[10px] font-bold px-5 py-2 rounded-md ${p.kategori_biaya === 'Servis Rutin' ? 'bg-teal-50 text-teal-600' :
-                    p.kategori_biaya === 'Perbaikan' ? 'bg-orange-50 text-orange-600' :
-                      p.kategori_biaya === 'Pajak & Dokumen' ? 'bg-purple-50 text-purple-600' :
-                        'bg-sky-50 text-sky-600'
-                    }`}>
-                    {p.kategori_biaya}
-                  </span>
-                </td>
-                <td className="px-13 py-13 font-mono text-xs font-bold text-slate-700">{formatRupiah(p.total_biaya)}</td>
-                <td className="px-13 py-13">
-                  {status ? (
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${
-                      status === 'Menunggu Pengecekan' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                      status === 'Sedang Diperbaiki' ? 'bg-blue-50 text-blue-600 border-blue-200' :
-                      status === 'Ditolak' ? 'bg-rose-50 text-rose-600 border-rose-200' :
-                      'bg-green-50 text-green-600 border-green-200'
-                    }`}>
-                      {status}
+                <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{p.tanggal}</td>
+                  <td className="px-13 py-13">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-slate-800">{getAsetName(p.id_aset)}</span>
+                      <span className="text-[10px] font-mono text-slate-400 mt-0.5">
+                        {asetObj?.kode_aset || '—'} · {asetObj?.lokasi_ruangan || '-'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-13 py-13">
+                    <span className={cn(
+                      'text-[10px] font-bold px-8 py-3 rounded-md inline-block',
+                      p.kategori_biaya === 'Servis Rutin' ? 'bg-teal-50 text-teal-700' : 'bg-orange-50 text-orange-700'
+                    )}>
+                      {p.kategori_biaya}
                     </span>
-                  ) : (
-                    <span className="text-slate-400 text-[10px] italic">-</span>
-                  )}
-                </td>
-                <td className="px-13 py-13 text-xs text-slate-500 max-w-[150px] truncate">{getCleanKeterangan(p.keterangan)}</td>
-                <td className="px-13 py-13">
-                  <div className="flex flex-col gap-2">
-                    {status === 'Menunggu Pengecekan' && (
-                      <div className="flex gap-1">
-                        <button onClick={() => handleUpdateStatus(p, 'Setujui')} className="text-[10px] font-bold px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">✓ Setujui</button>
-                        <button onClick={() => handleUpdateStatus(p, 'Tolak')} className="text-[10px] font-bold px-2 py-1 bg-rose-500 text-white rounded hover:bg-rose-600 transition-colors">✕ Tolak</button>
-                      </div>
-                    )}
-                    {status === 'Sedang Diperbaiki' && (
-                      <button onClick={() => handleUpdateStatus(p, 'Selesaikan')} className="text-[10px] font-bold px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">Selesaikan / Kembalikan</button>
-                    )}
-
-                    <div className="flex gap-5 mt-3">
-                      <button onClick={() => handleEdit(p)}
-                        className="w-21 h-21 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center hover:bg-amber-100 transition-colors" title="Edit">
-                        <Pencil size={12} />
+                  </td>
+                  <td className="px-13 py-13 font-mono text-xs font-bold text-emerald-600">
+                    {formatRupiah(p.total_biaya)}
+                  </td>
+                  <td className="px-13 py-13">
+                    <span className={cn('text-[10px] font-bold px-8 py-3 rounded-md border inline-block', statusBadgeStyle(kondisiAset))}>
+                      {kondisiAset}
+                    </span>
+                  </td>
+                  <td className="px-13 py-13 text-xs text-slate-500 max-w-[200px] truncate">
+                    {p.keterangan || '-'}
+                  </td>
+                  <td className="px-13 py-13">
+                    <div className="flex gap-5">
+                      <button
+                        onClick={() => handleEdit(p)}
+                        className="w-26 h-26 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors"
+                        title="Edit"
+                      >
+                        <Pencil size={13} />
                       </button>
-                      <button onClick={() => handleDelete(p)}
-                        className="w-21 h-21 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors" title="Hapus">
-                        <Trash2 size={12} />
+                      <button
+                        onClick={() => handleDelete(p)}
+                        className="w-26 h-26 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                        title="Hapus"
+                      >
+                        <Trash2 size={13} />
                       </button>
                     </div>
-                  </div>
-                </td>
-              </tr>
-            )})}
+                  </td>
+                </tr>
+              );
+            })}
           </Table>
-          <Pagination total={filtered.length} perPage={perPage} currentPage={currentPage}
-            onPageChange={setCurrentPage} onPerPageChange={setPerPage} />
+          <Pagination
+            total={filtered.length}
+            perPage={perPage}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPerPage}
+          />
         </div>
       )}
 
-      {/* CUSTOM MODAL HAPUS */}
+      {/* Modal Konfirmasi Hapus */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => { setIsDeleteModalOpen(false); setItemToDelete(null); }} />
-          <div className="relative bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md p-6 flex flex-col gap-4 z-10 animate-in fade-in zoom-in-95 duration-150">
-            <div>
-              <h3 className="text-base font-bold text-slate-800 mb-2">Hapus Log Perawatan</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Yakin ingin menghapus catatan biaya <span className="font-semibold text-slate-700">"{itemToDelete?.kategori_biaya}"</span> untuk aset <span className="font-semibold text-slate-700">{getAsetName(itemToDelete?.id_aset)}</span>?
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => { setIsDeleteModalOpen(false); setItemToDelete(null); }}
+          />
+          <div className="relative bg-white rounded-3xl shadow-xl border border-slate-100 w-full max-w-md p-21 flex flex-col gap-13 z-10 animate-in fade-in zoom-in-95 duration-150 text-center items-center">
+            <div className="mt-8">
+              <h3 className="text-lg font-black text-slate-800 tracking-tight mb-8">Hapus Catatan Perawatan?</h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
+                Yakin ingin menghapus catatan perawatan untuk aset <span className="font-bold text-slate-700">{getAsetName(itemToDelete?.id_aset)}</span>?
               </p>
             </div>
-            <div className="flex items-center justify-end gap-3 mt-4">
-              <button type="button" onClick={() => { setIsDeleteModalOpen(false); setItemToDelete(null); }}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 active:scale-95 transition-all select-none">
+            <div className="flex items-center justify-center gap-8 mt-13 w-full">
+              <button
+                type="button"
+                onClick={() => { setIsDeleteModalOpen(false); setItemToDelete(null); }}
+                className="px-18 py-8 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 active:scale-95 transition-all select-none"
+              >
                 Batal
               </button>
-              <button type="button" onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-sm font-semibold text-white shadow-sm active:scale-95 transition-all select-none">
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-18 py-8 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-sm active:scale-95 transition-all select-none"
+              >
                 Ya, Hapus
               </button>
             </div>

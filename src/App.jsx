@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Boxes, ShieldCheck, User } from 'lucide-react';
 import AppLayout from './components/layout/AppLayout';
 import { supabase } from './lib/supabase';
+import { ToastProvider } from './components/ui/Toast';
 
 // PERUBAHAN 1: Arahkan import ke useLogistikStore baru
 import useLogistikStore from './store/Logistik/useLogistikStore';
@@ -26,6 +27,7 @@ import Aktivitas from './pages/HartaBenda/Aktivitas';
 import DetailAset from './pages/HartaBenda/DetailAset';
 import PinjamAsetGuest from './pages/HartaBenda/PinjamAsetGuest';
 import LaporRusakGuest from './pages/HartaBenda/LaporRusakGuest';
+import Persetujuan from './pages/HartaBenda/Persetujuan';
 
 function Login() {
   // PERUBAHAN 2: Gunakan useLogistikStore untuk aksi Login
@@ -168,43 +170,47 @@ export default function App() {
   if (!currentUser) return <Login />;
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<AppLayout />}>
-          <Route index element={<Utama />} />
-          {currentUser.role === 'Admin' && (
-            <>
-              <Route path="barang" element={<Barang />} />
-              <Route path="masuk" element={<Masuk />} />
-              <Route path="keluar" element={<Keluar />} />
-              <Route path="stok" element={<Stok />} />
-            </>
-          )}
-          <Route path="minta" element={<Minta />} />
-          <Route path="barang/:kode" element={<DetailBarang />} />
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<Utama />} />
+            {currentUser.role === 'Admin' && (
+              <>
+                <Route path="barang" element={<Barang />} />
+                <Route path="masuk" element={<Masuk />} />
+                <Route path="keluar" element={<Keluar />} />
+                <Route path="stok" element={<Stok />} />
+              </>
+            )}
+            <Route path="minta" element={<Minta />} />
+            <Route path="barang/:kode" element={<DetailBarang />} />
 
-          {/* Route Harta Benda — hanya untuk Admin */}
-          {currentUser.role === 'Admin' && (
-            <>
-              <Route path="aset" element={<UtamaAset />} />
-              <Route path="aset/daftar" element={<DaftarAset />} />
-              <Route path="aset/perawatan" element={<Perawatan />} />
-              <Route path="aset/aktivitas" element={<Aktivitas />} />
-              <Route path="harta-benda/aset/:id" element={<DetailAset />} />
-            </>
-          )}
+            {/* Route Harta Benda — hanya untuk Admin */}
+            {currentUser.role === 'Admin' && (
+              <>
+                <Route path="aset" element={<UtamaAset />} />
+                <Route path="aset/daftar" element={<DaftarAset />} />
+                <Route path="aset/perawatan" element={<Perawatan />} />
+                <Route path="aset/aktivitas" element={<Aktivitas />} />
+                <Route path="aset/persetujuan" element={<Persetujuan />} />
+                <Route path="harta-benda/aset/:id" element={<DetailAset />} />
+                <Route path="aset/:id" element={<DetailAset />} />
+              </>
+            )}
 
-          {/* Route Harta Benda — untuk Guest/User */}
-          {(currentUser.role === 'User' || currentUser.role?.toLowerCase() === 'guest') && (
-            <>
-              <Route path="harta-benda/pinjam" element={<PinjamAsetGuest />} />
-              <Route path="harta-benda/lapor" element={<LaporRusakGuest />} />
-            </>
-          )}
+            {/* Route Harta Benda — untuk Guest/User */}
+            {(currentUser.role === 'User' || currentUser.role?.toLowerCase() === 'guest') && (
+              <>
+                <Route path="harta-benda/pinjam" element={<PinjamAsetGuest />} />
+                <Route path="harta-benda/lapor" element={<LaporRusakGuest />} />
+              </>
+            )}
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }
