@@ -15,6 +15,13 @@ const KONDISI_OPTIONS = [
   { label: 'Rusak Berat', value: 'Rusak Berat' },
 ];
 
+const SATUAN_OPTIONS = [
+  { value: 'Unit', label: 'Unit' },
+  { value: 'M2', label: 'M²' },
+  { value: 'Buah', label: 'Buah' },
+  { value: 'Set', label: 'Set' },
+];
+
 const EMPTY = {
   kelompok_id: '',
   sub_kelompok_id: '',
@@ -33,6 +40,13 @@ const EMPTY = {
   // bulan
   interval_bulan: '3',
   tanggal_servis_terakhir: new Date().toISOString().split('T')[0],
+  // bmn
+  kode_bmn: '',
+  nup: '',
+  satuan: 'Unit',
+  masa_manfaat_bulan: '',
+  jenis_bmn: 'Intrakomptabel',
+  status_operasional: 'Aktif',
 };
 
 // ─── Field helpers (Font & Style 100% Identik dengan Logistik Input.jsx) ──────
@@ -254,6 +268,13 @@ export default function TambahAsetModal({ open, onClose, onSuccess }) {
         interval_km: mType === 'km' ? Number(form.interval_km) : null,
         interval_bulan: mType === 'bulan' ? Number(form.interval_bulan) : null,
         tanggal_servis_terakhir: mType === 'bulan' ? (form.tanggal_servis_terakhir || null) : null,
+        // bmn
+        kode_bmn: form.kode_bmn.trim() || null,
+        nup: form.nup ? Number(form.nup) : null,
+        satuan: form.satuan || 'Unit',
+        masa_manfaat_bulan: form.masa_manfaat_bulan ? Number(form.masa_manfaat_bulan) : null,
+        jenis_bmn: form.jenis_bmn || 'Intrakomptabel',
+        status_operasional: form.status_operasional || 'Aktif',
       };
 
       const ok = await addAset(payload);
@@ -426,7 +447,71 @@ export default function TambahAsetModal({ open, onClose, onSuccess }) {
             </div>
           </section>
 
-          {/* SEKSI 3: FOTO ASET (OPSIONAL) */}
+          {/* SEKSI 3: INFORMASI BMN (OPSIONAL) */}
+          <section className="space-y-13 pt-1">
+            <p className="text-xs font-bold text-teal-700 uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
+              <ShieldCheck size={14} strokeWidth={2.5} /> Informasi BMN (Opsional)
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
+              <FieldSelect
+                label="Jenis Aset BMN"
+                value={form.jenis_bmn}
+                onChange={e => setField('jenis_bmn', e.target.value)}
+              >
+                <option value="Intrakomptabel">Intrakomptabel</option>
+                <option value="Ekstrakomptabel">Ekstrakomptabel</option>
+              </FieldSelect>
+              <FieldSelect
+                label="Status Operasional"
+                value={form.status_operasional}
+                onChange={e => setField('status_operasional', e.target.value)}
+              >
+                <option value="Aktif">Aktif</option>
+                <option value="Usul Hapus">Usul Hapus</option>
+                <option value="Dihapuskan">Dihapuskan</option>
+              </FieldSelect>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
+              <div>
+                <FieldInput
+                  label="Kode Barang BMN"
+                  placeholder="Contoh: 3.02.01.01.002"
+                  value={form.kode_bmn}
+                  onChange={e => setField('kode_bmn', e.target.value)}
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Boleh sama untuk beberapa unit sejenis (dibedakan lewat NUP)
+                </p>
+              </div>
+              <FieldInput
+                label="NUP"
+                type="number"
+                placeholder="Kosongkan untuk dihitung otomatis"
+                value={form.nup}
+                onChange={e => setField('nup', e.target.value)}
+              />
+              <FieldSelect
+                label="Satuan"
+                value={form.satuan}
+                onChange={e => setField('satuan', e.target.value)}
+              >
+                {SATUAN_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </FieldSelect>
+              <FieldInput
+                label="Masa Manfaat (bulan)"
+                type="number"
+                placeholder="Contoh: 48"
+                value={form.masa_manfaat_bulan}
+                onChange={e => setField('masa_manfaat_bulan', e.target.value)}
+              />
+            </div>
+          </section>
+
+          {/* SEKSI 4: FOTO ASET (OPSIONAL) */}
           <section className="space-y-8 pt-1">
             <p className="text-xs font-bold text-teal-700 uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
               <ImageIcon size={14} strokeWidth={2.5} /> Foto Aset (Opsional)
@@ -454,7 +539,7 @@ export default function TambahAsetModal({ open, onClose, onSuccess }) {
             </label>
           </section>
 
-          {/* SEKSI 4: UPLOAD LAMPIRAN (OPSIONAL) */}
+          {/* SEKSI 5: UPLOAD LAMPIRAN (OPSIONAL) */}
           <section className="space-y-8 pt-1">
             <p className="text-xs font-bold text-teal-700 uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
               <Paperclip size={14} strokeWidth={2.5} /> Upload Lampiran (Opsional)
@@ -488,7 +573,7 @@ export default function TambahAsetModal({ open, onClose, onSuccess }) {
             </label>
           </section>
 
-          {/* SEKSI 5: FIELD KONDISIONAL (maintenance_type) */}
+          {/* SEKSI 6: FIELD KONDISIONAL (maintenance_type) */}
           {form.sub_kelompok_id && (
             <section className="pt-1">
               {maintenanceType === 'km' && (

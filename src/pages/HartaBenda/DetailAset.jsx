@@ -262,6 +262,45 @@ export default function DetailAset() {
                   </div>
                 </div>
 
+                {/* ── Informasi BMN ── */}
+                <div className="grid grid-cols-2 gap-13 pt-8 border-t border-slate-50">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Jenis Aset BMN
+                    </p>
+                    <p className="text-xs font-semibold text-slate-700">
+                      {assetDetail.jenis_bmn || 'Intrakomptabel'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Status Operasional
+                    </p>
+                    <span className={cn('text-[10px] font-bold px-6 py-2 rounded-md inline-block', assetDetail.status_operasional === 'Aktif' ? 'bg-teal-50 text-teal-700' : 'bg-rose-50 text-rose-700')}>
+                      {assetDetail.status_operasional || 'Aktif'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-13 pt-8 border-t border-slate-50">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Kode Barang BMN
+                    </p>
+                    <p className="text-xs font-semibold font-mono text-slate-700">
+                      {assetDetail.kode_bmn || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      NUP
+                    </p>
+                    <p className="text-xs font-semibold font-mono text-slate-700">
+                      {assetDetail.nup || '-'}
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-13 pt-8 border-t border-slate-50">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">

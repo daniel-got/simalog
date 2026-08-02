@@ -274,7 +274,7 @@ export default function Aktivitas() {
 
       {/* Form Catat Aktivitas */}
       {open && (
-        <Card className="border-teal-200 bg-teal-50/40 p-21">
+        <Card className="border-teal-200 bg-teal-50/30 p-21">
           <p className="text-base font-bold text-slate-700 mb-13">
             {editId ? '✏️ Edit Catatan Aktivitas' : '📝 Catat Aktivitas Aset Baru'}
           </p>

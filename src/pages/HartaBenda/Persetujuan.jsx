@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   CheckCircle2,
   XCircle,
@@ -7,7 +7,6 @@ import {
   ClipboardList,
   AlertTriangle,
   Loader2,
-  RefreshCw,
   User,
   Calendar,
   FileText,
@@ -20,14 +19,10 @@ import Button from '../../components/ui/Button';
 // ─── Badge Helpers ────────────────────────────────────────────────────────────
 const tingkatBadge = (tingkat) => {
   switch (tingkat) {
-    case 'Ringan':
-      return 'bg-amber-50 text-amber-700 border border-amber-200';
-    case 'Sedang':
-      return 'bg-orange-50 text-orange-700 border border-orange-200';
-    case 'Berat':
-      return 'bg-rose-50 text-rose-700 border border-rose-200';
-    default:
-      return 'bg-slate-100 text-slate-600 border border-slate-200';
+    case 'Ringan': return 'bg-amber-50 text-amber-700 border border-amber-200';
+    case 'Sedang': return 'bg-orange-50 text-orange-700 border border-orange-200';
+    case 'Berat':  return 'bg-rose-50 text-rose-700 border border-rose-200';
+    default:       return 'bg-slate-100 text-slate-600 border border-slate-200';
   }
 };
 
@@ -51,15 +46,19 @@ function SkeletonRow() {
 // ─── Komponen Empty State ─────────────────────────────────────────────────────
 function EmptyState({ icon: Icon, label }) {
   return (
-    <div className="flex flex-col items-center justify-center py-34 text-slate-400 bg-slate-50/60 rounded-2xl border border-slate-100 border-dashed">
-      <Icon size={28} className="mb-8 text-slate-300" />
-      <p className="text-xs font-semibold">{label}</p>
+    <div className="flex flex-col items-center justify-center py-13 text-slate-400 bg-slate-50/60 rounded-xl border border-slate-100 border-dashed">
+      <Icon size={20} className="mb-3 text-slate-300" />
+      <p className="text-[11px] font-medium">{label}</p>
     </div>
   );
 }
 
-// ─── Komponen Confirm Modal ────────────────────────────────────────────────────
-function ConfirmModal({ open, title, message, onConfirm, onCancel, loading, confirmLabel, confirmClass }) {
+// ─── Komponen Confirm Modal (dengan field catatan opsional) ───────────────────
+function ConfirmModal({
+  open, title, message, onConfirm, onCancel,
+  loading, confirmLabel, confirmClass,
+  showCatatan, catatan, onCatatanChange,
+}) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -68,11 +67,27 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel, loading, conf
         onClick={onCancel}
       />
       <div className="relative bg-white rounded-3xl shadow-xl border border-slate-100 w-full max-w-md p-21 flex flex-col gap-13 z-10 animate-in fade-in zoom-in-95 duration-150 text-center items-center">
-        <div className="mt-8">
+        <div className="mt-8 w-full">
           <h3 className="text-lg font-black text-slate-800 tracking-tight mb-8">{title}</h3>
-          <p className="text-xs text-slate-500 leading-relaxed max-w-sm">{message}</p>
+          <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">{message}</p>
+
+          {/* Field catatan penolakan (opsional) */}
+          {showCatatan && (
+            <div className="mt-13 text-left">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-5">
+                Alasan Penolakan <span className="text-slate-400 font-normal">(opsional)</span>
+              </label>
+              <textarea
+                value={catatan}
+                onChange={e => onCatatanChange(e.target.value)}
+                rows={3}
+                className="w-full px-13 py-8 rounded-2xl border border-slate-200 bg-slate-50 text-xs focus:bg-white focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all resize-none"
+                placeholder="Tulis alasan penolakan (opsional)..."
+              />
+            </div>
+          )}
         </div>
-        <div className="flex items-center justify-center gap-8 mt-13 w-full">
+        <div className="flex items-center justify-center gap-8 mt-5 w-full">
           <button
             type="button"
             onClick={onCancel}
@@ -100,21 +115,23 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel, loading, conf
 // ══════════════════════════════════════════════════════════════════════════════
 export default function Persetujuan() {
   // ── State data ────────────────────────────────────────────────────────────
-  const [peminjaman, setPeminjaman]     = useState([]);
-  const [kerusakan, setKerusakan]       = useState([]);
-  const [loadingP, setLoadingP]         = useState(true);
-  const [loadingK, setLoadingK]         = useState(true);
-  const [actionLoading, setActionLoading] = useState(null); // id item yang sedang diproses
+  const [peminjaman, setPeminjaman]       = useState([]);
+  const [kerusakan, setKerusakan]         = useState([]);
+  const [loadingP, setLoadingP]           = useState(true);
+  const [loadingK, setLoadingK]           = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [isRealtime, setIsRealtime]       = useState(false); // status koneksi realtime
 
   // ── Confirm modal state ───────────────────────────────────────────────────
   const [modal, setModal] = useState({
-    open: false,
-    title: '',
-    message: '',
-    onConfirm: null,
-    confirmLabel: '',
-    confirmClass: '',
+    open: false, title: '', message: '',
+    onConfirm: null, confirmLabel: '', confirmClass: '',
+    showCatatan: false,
   });
+  const [catatan, setCatatan] = useState('');
+
+  // ── Ref untuk channel realtime ────────────────────────────────────────────
+  const channelRef = useRef(null);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchPeminjaman = useCallback(async () => {
@@ -139,32 +156,122 @@ export default function Persetujuan() {
         *,
         aset:id_aset ( id, nama_aset, kode_aset )
       `)
-      .eq('status', 'menunggu')
+      // Mendukung semua variasi string status laporan awal
+      .in('status', ['menunggu', 'MENUNGGU PENGECEKAN', 'menunggu_pengecekan'])
       .order('created_at', { ascending: false });
     if (!error) setKerusakan(data || []);
     setLoadingK(false);
   }, []);
 
+  // Fetch awal saat komponen mount
   useEffect(() => {
     fetchPeminjaman();
     fetchKerusakan();
   }, [fetchPeminjaman, fetchKerusakan]);
 
-  const closeModal = () =>
-    setModal({ open: false, title: '', message: '', onConfirm: null, confirmLabel: '', confirmClass: '' });
+  // ── Supabase Realtime Listener ────────────────────────────────────────────
+  useEffect(() => {
+    // Buat channel dengan nama unik
+    const channel = supabase.channel('persetujuan-admin-realtime', {
+      config: { broadcast: { self: false } },
+    });
+
+    channel
+      // Listen perubahan di tabel peminjaman_aset
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'peminjaman_aset' },
+        (payload) => {
+          // Ada pengajuan pinjam baru masuk — re-fetch seluruh list (untuk join aset)
+          fetchPeminjaman();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'peminjaman_aset' },
+        (payload) => {
+          const updated = payload.new;
+          if (updated.status !== 'pending') {
+            // Sudah diproses — hapus dari list
+            setPeminjaman(prev => prev.filter(p => p.id !== updated.id));
+          } else {
+            setPeminjaman(prev =>
+              prev.map(p => p.id === updated.id ? { ...p, ...updated } : p)
+            );
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'peminjaman_aset' },
+        (payload) => {
+          setPeminjaman(prev => prev.filter(p => p.id !== payload.old.id));
+        }
+      )
+      // Listen perubahan di tabel laporan_kerusakan
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'laporan_kerusakan' },
+        (payload) => {
+          // Laporan baru masuk — re-fetch (untuk join aset)
+          fetchKerusakan();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'laporan_kerusakan' },
+        (payload) => {
+          const updated = payload.new;
+          const statusPending = ['menunggu', 'MENUNGGU PENGECEKAN', 'menunggu_pengecekan'];
+          if (!statusPending.includes(updated.status)) {
+            // Sudah diproses — hapus dari list
+            setKerusakan(prev => prev.filter(k => k.id !== updated.id));
+          } else {
+            setKerusakan(prev =>
+              prev.map(k => k.id === updated.id ? { ...k, ...updated } : k)
+            );
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'laporan_kerusakan' },
+        (payload) => {
+          setKerusakan(prev => prev.filter(k => k.id !== payload.old.id));
+        }
+      )
+      .subscribe((status) => {
+        setIsRealtime(status === 'SUBSCRIBED');
+      });
+
+    channelRef.current = channel;
+
+    // Cleanup saat komponen unmount
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [fetchPeminjaman, fetchKerusakan]);
+
+  const closeModal = () => {
+    setModal({ open: false, title: '', message: '', onConfirm: null, confirmLabel: '', confirmClass: '', showCatatan: false });
+    setCatatan('');
+  };
 
   // ── Handler: Setujui Peminjaman ───────────────────────────────────────────
   const doSetujuiPeminjaman = async (item) => {
     setActionLoading(item.id);
     try {
-      // 1. Update status peminjaman_aset
+      // 1. Update status peminjaman_aset → disetujui
       const { error: e1 } = await supabase
         .from('peminjaman_aset')
-        .update({ status: 'disetujui' })
+        .update({ status: 'disetujui', catatan_admin: catatan || null })
         .eq('id', item.id);
       if (e1) throw e1;
 
-      // 2. Insert ke log_aktivitas_aset
+      // 2. Insert ke log_aktivitas_aset (catat bahwa aset dipinjam)
       const { error: e2 } = await supabase
         .from('log_aktivitas_aset')
         .insert([{
@@ -192,7 +299,7 @@ export default function Persetujuan() {
     try {
       const { error } = await supabase
         .from('peminjaman_aset')
-        .update({ status: 'ditolak' })
+        .update({ status: 'ditolak', catatan_admin: catatan || null })
         .eq('id', item.id);
       if (error) throw error;
       setPeminjaman(prev => prev.filter(p => p.id !== item.id));
@@ -208,14 +315,14 @@ export default function Persetujuan() {
   const doVerifikasiKerusakan = async (item) => {
     setActionLoading(item.id);
     try {
-      // 1. Update status laporan_kerusakan
+      // 1. Update status laporan_kerusakan → diverifikasi
       const { error: e1 } = await supabase
         .from('laporan_kerusakan')
-        .update({ status: 'diverifikasi' })
+        .update({ status: 'diverifikasi', catatan_admin: catatan || null })
         .eq('id', item.id);
       if (e1) throw e1;
 
-      // 2. Update status_kondisi aset
+      // 2. Update status_kondisi aset sesuai tingkat kerusakan
       const kondisiBaru = item.tingkat === 'Ringan' ? 'Rusak Ringan' : 'Rusak Berat';
       const { error: e2 } = await supabase
         .from('assets')
@@ -238,7 +345,7 @@ export default function Persetujuan() {
     try {
       const { error } = await supabase
         .from('laporan_kerusakan')
-        .update({ status: 'ditolak' })
+        .update({ status: 'ditolak', catatan_admin: catatan || null })
         .eq('id', item.id);
       if (error) throw error;
       setKerusakan(prev => prev.filter(k => k.id !== item.id));
@@ -251,7 +358,8 @@ export default function Persetujuan() {
   };
 
   // ── Confirm wrappers ──────────────────────────────────────────────────────
-  const confirmSetujuiPeminjaman = (item) =>
+  const confirmSetujuiPeminjaman = (item) => {
+    setCatatan('');
     setModal({
       open: true,
       title: 'Setujui Peminjaman?',
@@ -259,9 +367,12 @@ export default function Persetujuan() {
       onConfirm: () => doSetujuiPeminjaman(item),
       confirmLabel: 'Ya, Setujui',
       confirmClass: 'bg-emerald-600 hover:bg-emerald-700',
+      showCatatan: false,
     });
+  };
 
-  const confirmTolakPeminjaman = (item) =>
+  const confirmTolakPeminjaman = (item) => {
+    setCatatan('');
     setModal({
       open: true,
       title: 'Tolak Peminjaman?',
@@ -269,19 +380,25 @@ export default function Persetujuan() {
       onConfirm: () => doTolakPeminjaman(item),
       confirmLabel: 'Ya, Tolak',
       confirmClass: 'bg-rose-600 hover:bg-rose-700',
+      showCatatan: true,
     });
+  };
 
-  const confirmVerifikasiKerusakan = (item) =>
+  const confirmVerifikasiKerusakan = (item) => {
+    setCatatan('');
     setModal({
       open: true,
       title: 'Verifikasi Laporan Kerusakan?',
       message: `Verifikasi laporan dari ${item.nama_pelapor} untuk aset "${item.aset?.nama_aset}"? Kondisi aset akan diubah ke "${item.tingkat === 'Ringan' ? 'Rusak Ringan' : 'Rusak Berat'}".`,
       onConfirm: () => doVerifikasiKerusakan(item),
       confirmLabel: 'Ya, Verifikasi',
-      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+      confirmClass: 'bg-teal-600 hover:bg-teal-700',
+      showCatatan: false,
     });
+  };
 
-  const confirmTolakKerusakan = (item) =>
+  const confirmTolakKerusakan = (item) => {
+    setCatatan('');
     setModal({
       open: true,
       title: 'Tolak Laporan Kerusakan?',
@@ -289,16 +406,18 @@ export default function Persetujuan() {
       onConfirm: () => doTolakKerusakan(item),
       confirmLabel: 'Ya, Tolak',
       confirmClass: 'bg-rose-600 hover:bg-rose-700',
+      showCatatan: true,
     });
+  };
 
-  // ── Total badge count (dipakai juga di header) ────────────────────────────
+  // ── Total badge count ─────────────────────────────────────────────────────
   const totalPending = peminjaman.length + kerusakan.length;
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-8">
 
-      {/* ── Refresh Button wrapping ── */}
+      {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-4">
@@ -310,17 +429,9 @@ export default function Persetujuan() {
             )}
           </h1>
           <p className="text-xs text-slate-400 mt-2">
-            {peminjaman.length} peminjaman pending · {kerusakan.length} laporan kerusakan menunggu
+            Daftar pengajuan peminjaman dan laporan kerusakan yang memerlukan verifikasi.
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => { fetchPeminjaman(); fetchKerusakan(); }}
-          title="Refresh"
-        >
-          <RefreshCw size={14} /> Refresh
-        </Button>
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════
@@ -329,17 +440,17 @@ export default function Persetujuan() {
       <div className="space-y-13">
         {/* Section Header */}
         <div className="flex items-center gap-8">
-          <div className="w-34 h-34 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <ClipboardList size={18} className="text-blue-600" />
+          <div className="w-34 h-34 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+            <ClipboardList size={18} className="text-teal-600" />
           </div>
           <div>
             <p className="text-sm font-black text-slate-800 tracking-tight">
               Pengajuan Peminjaman
             </p>
-            <p className="text-[10px] text-slate-400 mt-1">Dari tabel <code className="font-mono bg-slate-100 px-3 py-1 rounded text-slate-600">peminjaman_aset</code> — status: <span className="font-bold text-amber-600">pending</span></p>
+            <p className="text-[10px] text-slate-400 mt-1">Menunggu persetujuan admin</p>
           </div>
           {peminjaman.length > 0 && (
-            <span className="ml-auto inline-flex items-center justify-center min-w-[22px] h-[22px] px-5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-full">
+            <span className="ml-auto inline-flex items-center justify-center min-w-[22px] h-[22px] px-5 bg-teal-100 text-teal-700 text-[10px] font-black rounded-full">
               {peminjaman.length}
             </span>
           )}
@@ -356,25 +467,25 @@ export default function Persetujuan() {
             {peminjaman.map(item => (
               <Card
                 key={item.id}
-                className="p-0 overflow-hidden border-slate-100 hover:border-blue-200 transition-all shadow-sm"
+                className="p-0 overflow-hidden border-slate-100 hover:border-teal-200 transition-all shadow-sm"
               >
                 <div className="flex items-stretch">
                   {/* Left accent bar */}
-                  <div className="w-3 bg-blue-500 shrink-0 rounded-l-2xl" />
+                  <div className="w-3 bg-teal-500 shrink-0 rounded-l-2xl" />
 
                   {/* Content */}
                   <div className="flex-1 flex flex-col md:flex-row md:items-center gap-13 p-13">
                     {/* Aset Info */}
                     <div className="flex-1 min-w-0 space-y-5">
                       <div className="flex items-start gap-8">
-                        <div className="w-34 h-34 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                          <ClipboardList size={16} className="text-blue-600" />
+                        <div className="w-34 h-34 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+                          <ClipboardList size={16} className="text-teal-600" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-black text-slate-800 truncate">
                             {item.aset?.nama_aset || `Aset #${item.id_aset}`}
                           </p>
-                          <p className="font-mono text-[10px] text-blue-600 font-bold mt-1">
+                          <p className="font-mono text-[10px] text-teal-600 font-bold mt-1">
                             {item.aset?.kode_aset || '—'}
                           </p>
                         </div>
@@ -383,32 +494,32 @@ export default function Persetujuan() {
                       {/* Meta grid */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pl-[42px]">
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <User size={9} /> Peminjam
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
+                            <User size={10} /> Peminjam
                           </p>
-                          <p className="text-xs font-semibold text-slate-700 truncate">
+                          <p className="text-xs font-bold text-slate-700 truncate">
                             {item.nama_peminjam || '—'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <FileText size={9} /> Keperluan
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
+                            <FileText size={10} /> Keperluan
                           </p>
-                          <p className="text-xs text-slate-600 truncate">
+                          <p className="text-xs font-medium text-slate-600 truncate">
                             {item.keperluan || '—'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <Calendar size={9} /> Tgl Pinjam
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
+                            <Calendar size={10} /> Tgl Pinjam
                           </p>
-                          <p className="text-xs text-slate-600">{item.tanggal_pinjam || '—'}</p>
+                          <p className="text-xs font-medium text-slate-600">{item.tanggal_pinjam || '—'}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <Calendar size={9} /> Tgl Kembali
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
+                            <Calendar size={10} /> Tgl Kembali
                           </p>
-                          <p className="text-xs font-semibold text-blue-700">{item.tanggal_kembali || '—'}</p>
+                          <p className="text-xs font-bold text-teal-700">{item.tanggal_kembali || '—'}</p>
                         </div>
                       </div>
                     </div>
@@ -450,17 +561,17 @@ export default function Persetujuan() {
       <div className="space-y-13">
         {/* Section Header */}
         <div className="flex items-center gap-8">
-          <div className="w-34 h-34 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-            <AlertTriangle size={18} className="text-amber-600" />
+          <div className="w-34 h-34 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+            <AlertTriangle size={18} className="text-teal-600" />
           </div>
           <div>
             <p className="text-sm font-black text-slate-800 tracking-tight">
               Laporan Kerusakan
             </p>
-            <p className="text-[10px] text-slate-400 mt-1">Dari tabel <code className="font-mono bg-slate-100 px-3 py-1 rounded text-slate-600">laporan_kerusakan</code> — status: <span className="font-bold text-amber-600">menunggu</span></p>
+            <p className="text-[10px] text-slate-400 mt-1">Menunggu pengecekan & verifikasi</p>
           </div>
           {kerusakan.length > 0 && (
-            <span className="ml-auto inline-flex items-center justify-center min-w-[22px] h-[22px] px-5 bg-amber-100 text-amber-700 text-[10px] font-black rounded-full">
+            <span className="ml-auto inline-flex items-center justify-center min-w-[22px] h-[22px] px-5 bg-teal-100 text-teal-700 text-[10px] font-black rounded-full">
               {kerusakan.length}
             </span>
           )}
@@ -477,12 +588,12 @@ export default function Persetujuan() {
             {kerusakan.map(item => (
               <Card
                 key={item.id}
-                className="p-0 overflow-hidden border-slate-100 hover:border-amber-200 transition-all shadow-sm"
+                className="p-0 overflow-hidden border-slate-100 hover:border-teal-200 transition-all shadow-sm"
               >
                 <div className="flex items-stretch">
                   {/* Left accent bar */}
                   <div className={`w-3 shrink-0 rounded-l-2xl ${
-                    item.tingkat === 'Berat' ? 'bg-rose-500' :
+                    item.tingkat === 'Berat'  ? 'bg-rose-500'   :
                     item.tingkat === 'Sedang' ? 'bg-orange-400' :
                     'bg-amber-400'
                   }`} />
@@ -492,19 +603,19 @@ export default function Persetujuan() {
                     {/* Aset Info */}
                     <div className="flex-1 min-w-0 space-y-5">
                       <div className="flex items-start gap-8">
-                        <div className="w-34 h-34 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                          <AlertOctagon size={16} className="text-amber-600" />
+                        <div className="w-34 h-34 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+                          <AlertOctagon size={16} className="text-teal-600" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-black text-slate-800 truncate">
                             {item.aset?.nama_aset || `Aset #${item.id_aset}`}
                           </p>
                           <div className="flex items-center gap-5 mt-1">
-                            <p className="font-mono text-[10px] text-amber-600 font-bold">
+                            <p className="font-mono text-[10px] text-teal-600 font-bold">
                               {item.aset?.kode_aset || '—'}
                             </p>
                             {item.tingkat && (
-                              <span className={`text-[9px] font-black px-5 py-1 rounded-full ${tingkatBadge(item.tingkat)}`}>
+                              <span className={`text-[10px] font-black px-5 py-1 rounded-full ${tingkatBadge(item.tingkat)}`}>
                                 {item.tingkat}
                               </span>
                             )}
@@ -515,32 +626,32 @@ export default function Persetujuan() {
                       {/* Meta grid */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pl-[42px]">
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <User size={9} /> Pelapor
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
+                            <User size={10} /> Pelapor
                           </p>
-                          <p className="text-xs font-semibold text-slate-700 truncate">
+                          <p className="text-xs font-bold text-slate-700 truncate">
                             {item.nama_pelapor || '—'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <AlertTriangle size={9} /> Kendala
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
+                            <AlertTriangle size={10} /> Kendala
                           </p>
-                          <p className="text-xs text-slate-600 line-clamp-2">
+                          <p className="text-xs font-medium text-slate-600 line-clamp-2">
                             {item.kendala || item.deskripsi || '—'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <Calendar size={9} /> Tanggal
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
+                            <Calendar size={10} /> Tanggal
                           </p>
-                          <p className="text-xs text-slate-600">{item.tanggal || item.created_at?.split('T')[0] || '—'}</p>
+                          <p className="text-xs font-medium text-slate-600">{item.tanggal || item.created_at?.split('T')[0] || '—'}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <ShieldCheck size={9} /> Efek Verifikasi
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
+                            <ShieldCheck size={10} /> Efek Verifikasi
                           </p>
-                          <p className="text-xs font-semibold text-orange-700">
+                          <p className="text-xs font-bold text-teal-700">
                             → {item.tingkat === 'Ringan' ? 'Rusak Ringan' : 'Rusak Berat'}
                           </p>
                         </div>
@@ -552,7 +663,7 @@ export default function Persetujuan() {
                       <button
                         onClick={() => confirmVerifikasiKerusakan(item)}
                         disabled={actionLoading === item.id}
-                        className="flex items-center gap-5 px-13 py-8 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-sm shadow-blue-500/20 whitespace-nowrap"
+                        className="flex items-center gap-5 px-13 py-8 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-sm shadow-teal-500/20 whitespace-nowrap"
                       >
                         {actionLoading === item.id
                           ? <Loader2 size={13} className="animate-spin" />
@@ -585,6 +696,9 @@ export default function Persetujuan() {
         loading={actionLoading !== null}
         confirmLabel={modal.confirmLabel}
         confirmClass={modal.confirmClass}
+        showCatatan={modal.showCatatan}
+        catatan={catatan}
+        onCatatanChange={setCatatan}
       />
 
     </div>

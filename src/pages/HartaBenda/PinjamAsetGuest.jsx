@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
 import useLogistikStore from '../../store/Logistik/useLogistikStore';
+import { supabase } from '../../lib/supabase';
 import { Card } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -8,7 +9,7 @@ import SearchableSelect from '../../components/ui/SearchableSelect';
 import Pagination from '../../components/ui/Pagination';
 import {
   Plus, Search, Calendar, User, Trash2, Building2,
-  Clock, ClipboardList, X
+  Clock, ClipboardList, X, Loader2
 } from 'lucide-react';
 
 const makeEmptyForm = (namaUser) => ({
@@ -28,13 +29,47 @@ const KATEGORI_OPTIONS = [
   'Aset Tetap Lainnya'
 ];
 
+// Badge status
+const statusBadge = (status) => {
+  switch (status) {
+    case 'pending':   return 'bg-amber-50 text-amber-600 border border-amber-100';
+    case 'disetujui': return 'bg-green-50 text-green-600 border border-green-100';
+    case 'ditolak':   return 'bg-red-50 text-red-600 border border-red-100';
+    default:          return 'bg-slate-100 text-slate-500 border border-slate-200';
+  }
+};
+
+const statusLabel = (status) => {
+  switch (status) {
+    case 'pending':   return 'Pending';
+    case 'disetujui': return 'Disetujui';
+    case 'ditolak':   return 'Ditolak';
+    default:          return status || '—';
+  }
+};
+
 export default function PinjamAsetGuest() {
   const { currentUser } = useLogistikStore();
-  const { aset, logAktivitas, addAktivitas, deleteAktivitas } = useHartaBendaStore();
+  const { aset, logAktivitas } = useHartaBendaStore();
 
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(() => makeEmptyForm(currentUser?.nama));
+  const [open, setOpen]     = useState(false);
+  const [form, setForm]     = useState(() => makeEmptyForm(currentUser?.nama));
   const [loading, setLoading] = useState(false);
+
+  // Data pengajuan dari tabel peminjaman_aset
+  const [daftarPinjam, setDaftarPinjam] = useState([]);
+  const [loadingList, setLoadingList]   = useState(true);
+
+  // Filter States
+  const [filterText, setFilterText]           = useState('');
+  const [filterKategori, setFilterKategori]   = useState('');
+  const [filterStatus, setFilterStatus]       = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate]     = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage]         = useState(9);
 
   // Update nama staf di form jika data currentUser baru termuat
   useEffect(() => {
@@ -43,45 +78,73 @@ export default function PinjamAsetGuest() {
     }
   }, [currentUser]);
 
-  // Filter States
-  const [filterText, setFilterText] = useState('');
-  const [filterKategori, setFilterKategori] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
-
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(9); // 3x3 grid
-
   // Reset page on filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [filterText, filterKategori, filterStatus, filterStartDate, filterEndDate]);
 
-  // Parse status helper
-  const parseStatus = (keterangan) => {
-    if (keterangan?.includes('[Status: Pending]')) return 'Pending';
-    if (keterangan?.includes('[Status: Disetujui]')) return 'Disetujui';
-    if (keterangan?.includes('[Status: Ditolak]')) return 'Ditolak';
-    return 'Disetujui';
-  };
+  // ── Fetch data pinjam milik user ini ────────────────────────────────────
+  const fetchDaftarPinjam = useCallback(async () => {
+    if (!currentUser?.nama) return;
+    setLoadingList(true);
+    const { data, error } = await supabase
+      .from('peminjaman_aset')
+      .select(`
+        *,
+        aset:id_aset ( id, nama_aset, kode_aset, foto_url, lokasi_ruangan )
+      `)
+      .eq('nama_peminjam', currentUser.nama)
+      .order('created_at', { ascending: false });
 
-  // Bersihkan tag status dan label 'Keperluan:' dari string keterangan
-  const getCleanKeterangan = (keterangan) => {
-    if (!keterangan) return '-';
-    return keterangan
-      .replace(/^\[Status:\s*[^\]]+\]\s*/, '')
-      .replace(/^Keperluan:\s*/i, '') || '-';
-  };
+    if (!error) setDaftarPinjam(data || []);
+    setLoadingList(false);
+  }, [currentUser?.nama]);
 
-  // Hitung ketersediaan aset berdasarkan aktivitas terakhir
+  useEffect(() => {
+    fetchDaftarPinjam();
+  }, [fetchDaftarPinjam]);
+
+  // ── Supabase Realtime: auto-update saat status berubah ──────────────────
+  useEffect(() => {
+    if (!currentUser?.nama) return;
+
+    const channel = supabase
+      .channel('pinjam-guest-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'peminjaman_aset',
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            // Hanya tambahkan jika milik user ini
+            if (payload.new?.nama_peminjam === currentUser.nama) {
+              // Re-fetch untuk mendapatkan data relasi aset
+              fetchDaftarPinjam();
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            setDaftarPinjam(prev =>
+              prev.map(p => p.id === payload.new.id ? { ...p, ...payload.new } : p)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setDaftarPinjam(prev => prev.filter(p => p.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.nama, fetchDaftarPinjam]);
+
+  // ── Hitung ketersediaan aset (dari log_aktivitas_aset) ──────────────────
   const latestActivity = useMemo(() => {
     const map = {};
     const sorted = [...(logAktivitas || [])].sort((a, b) => a.id - b.id);
-    sorted.forEach(act => {
-      map[act.id_aset] = act.jenis_aktivitas;
-    });
+    sorted.forEach(act => { map[act.id_aset] = act.jenis_aktivitas; });
     return map;
   }, [logAktivitas]);
 
@@ -95,15 +158,16 @@ export default function PinjamAsetGuest() {
 
   const asetOptions = useMemo(() => {
     return availableAset.map(a => ({
-      label: `${a.nama_aset} — ${a.kode || a.id} (${a.lokasi_ruangan || 'Tanpa Lokasi'})`,
+      label: `${a.nama_aset} — ${a.kode_aset || a.id} (${a.lokasi_ruangan || 'Tanpa Lokasi'})`,
       value: a.id,
     }));
   }, [availableAset]);
 
-  const getAssetDetails = (idAset) => {
+  const getAssetDetails = useCallback((idAset) => {
     return (aset || []).find(a => a.id === idAset) || {};
-  };
+  }, [aset]);
 
+  // ── Submit pengajuan ke tabel peminjaman_aset ────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -122,51 +186,61 @@ export default function PinjamAsetGuest() {
 
     setLoading(true);
     const payload = {
-      id_aset: form.id_aset,
-      jenis_aktivitas: 'Dipinjam',
-      nama_staf: form.nama_staf || currentUser?.nama || 'Guest',
-      tanggal: form.tanggal,
-      tanggal_rencana_kembali: form.tanggal_rencana_kembali,
-      keterangan: `[Status: Pending] Keperluan: ${form.keperluan || '-'}`,
+      id_aset:         Number(form.id_aset),
+      nama_peminjam:   form.nama_staf || currentUser?.nama || 'Guest',
+      keperluan:       form.keperluan || '',
+      tanggal_pinjam:  form.tanggal,
+      tanggal_kembali: form.tanggal_rencana_kembali,
+      status:          'pending',
     };
 
-    const ok = await addAktivitas(payload);
+    const { error } = await supabase.from('peminjaman_aset').insert([payload]);
     setLoading(false);
-    if (ok) {
-      setForm(makeEmptyForm(currentUser?.nama));
-      setOpen(false);
+
+    if (error) {
+      alert('Gagal mengirim pengajuan: ' + error.message);
+      return;
     }
+
+    setForm(makeEmptyForm(currentUser?.nama));
+    setOpen(false);
+    // Re-fetch untuk tampilkan data baru (Realtime akan trigger juga)
+    fetchDaftarPinjam();
   };
 
+  // ── Batalkan pengajuan (hanya saat status pending) ───────────────────────
   const handleCancel = async (id) => {
-    if (window.confirm('Yakin ingin membatalkan pengajuan peminjaman ini?')) {
-      await deleteAktivitas(id);
+    if (!window.confirm('Yakin ingin membatalkan pengajuan peminjaman ini?')) return;
+    const { error } = await supabase.from('peminjaman_aset').delete().eq('id', id);
+    if (error) {
+      alert('Gagal membatalkan: ' + error.message);
+      return;
     }
+    setDaftarPinjam(prev => prev.filter(p => p.id !== id));
   };
 
-  // Filter & Search Logic
+  // ── Filter & Search ──────────────────────────────────────────────────────
   const filteredLoans = useMemo(() => {
-    return (logAktivitas || [])
-      .filter(act => act.nama_staf === currentUser?.nama && act.jenis_aktivitas === 'Dipinjam')
-      .filter(act => {
-        const item = getAssetDetails(act.id_aset);
-        const status = parseStatus(act.keterangan);
-        const cleanKet = getCleanKeterangan(act.keterangan);
+    return daftarPinjam.filter(loan => {
+      const asetDetail = loan.aset || getAssetDetails(loan.id_aset);
+      const targetText = `${asetDetail?.nama_aset || ''} ${asetDetail?.kode_aset || ''} ${loan.keperluan || ''}`.toLowerCase();
+      const matchText  = targetText.includes(filterText.toLowerCase());
 
-        const targetText = `${item.nama_aset || ''} ${item.kode || ''} ${act.id_aset || ''} ${cleanKet}`.toLowerCase();
-        const matchText = targetText.includes(filterText.toLowerCase());
+      const matchKategori = filterKategori
+        ? (asetDetail?.kategori_aset || '') === filterKategori
+        : true;
 
-        const matchKategori = filterKategori ? item.kategori_aset === filterKategori : true;
-        const matchStatus = filterStatus ? status === filterStatus : true;
+      const matchStatus = filterStatus
+        ? loan.status === filterStatus
+        : true;
 
-        // Pembandingan tanggal aman dengan format YYYY-MM-DD
-        const matchStart = filterStartDate ? act.tanggal >= filterStartDate : true;
-        const matchEnd = filterEndDate ? act.tanggal <= filterEndDate : true;
+      const tgl = loan.tanggal_pinjam || '';
+      const matchStart = filterStartDate ? tgl >= filterStartDate : true;
+      const matchEnd   = filterEndDate   ? tgl <= filterEndDate   : true;
 
-        return matchText && matchKategori && matchStatus && matchStart && matchEnd;
-      })
-      .sort((a, b) => b.id - a.id);
-  }, [logAktivitas, aset, filterText, filterKategori, filterStatus, filterStartDate, filterEndDate, currentUser]);
+      return matchText && matchKategori && matchStatus && matchStart && matchEnd;
+    });
+  }, [daftarPinjam, aset, filterText, filterKategori, filterStatus, filterStartDate, filterEndDate]);
 
   const pagedLoans = useMemo(() => {
     return filteredLoans.slice((currentPage - 1) * perPage, currentPage * perPage);
@@ -256,7 +330,7 @@ export default function PinjamAsetGuest() {
                 size="sm"
                 className="bg-teal-600 hover:bg-teal-700 text-white"
               >
-                {loading ? 'Mengirim...' : 'Simpan'}
+                {loading ? <><Loader2 size={13} className="animate-spin mr-1" /> Mengirim...</> : 'Simpan'}
               </Button>
             </div>
           </form>
@@ -294,9 +368,9 @@ export default function PinjamAsetGuest() {
             className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
           >
             <option value="">Semua Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Disetujui">Disetujui</option>
-            <option value="Ditolak">Ditolak</option>
+            <option value="pending">Pending</option>
+            <option value="disetujui">Disetujui</option>
+            <option value="ditolak">Ditolak</option>
           </select>
 
           <div className="flex items-center gap-5">
@@ -322,7 +396,19 @@ export default function PinjamAsetGuest() {
       </div>
 
       {/* Grid Card List */}
-      {filteredLoans.length === 0 ? (
+      {loadingList ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-13 lg:gap-21">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-pulse">
+              <div className="w-full h-40 bg-slate-100" />
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-slate-100 rounded w-3/4" />
+                <div className="h-3 bg-slate-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredLoans.length === 0 ? (
         <div className="text-center py-34 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
           <ClipboardList size={34} className="mx-auto mb-5 text-slate-300" />
           Tidak ada riwayat transaksi peminjaman aset.
@@ -331,9 +417,8 @@ export default function PinjamAsetGuest() {
         <div className="space-y-21">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-13 lg:gap-21 w-full">
             {pagedLoans.map(loan => {
-              const item = getAssetDetails(loan.id_aset);
-              const status = parseStatus(loan.keterangan);
-              const keperluan = getCleanKeterangan(loan.keterangan);
+              const asetDetail = loan.aset || getAssetDetails(loan.id_aset);
+              const status     = loan.status || 'pending';
 
               return (
                 <div
@@ -342,17 +427,17 @@ export default function PinjamAsetGuest() {
                 >
                   {/* Gambar Aset */}
                   <div className="w-full h-40 rounded-t-2xl overflow-hidden bg-slate-100 flex items-center justify-center relative flex-shrink-0">
-                    {item.image_url ? (
+                    {asetDetail?.foto_url || asetDetail?.image_url ? (
                       <img
-                        src={item.image_url}
-                        alt={item.nama_aset}
+                        src={asetDetail.foto_url || asetDetail.image_url}
+                        alt={asetDetail.nama_aset}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <Building2 size={34} className="text-slate-300" />
                     )}
                     <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-slate-500 font-bold text-[9px] px-2 py-1 rounded-md border border-slate-100 uppercase tracking-wider">
-                      {item.kategori_aset || 'Umum'}
+                      {asetDetail?.kategori_aset || 'Umum'}
                     </span>
                   </div>
 
@@ -361,10 +446,10 @@ export default function PinjamAsetGuest() {
                     {/* Nama & Kode */}
                     <div className="mb-3">
                       <h3 className="text-sm font-bold text-slate-800 leading-tight truncate">
-                        {item.nama_aset || 'Aset Tidak Dikenal'}
+                        {asetDetail?.nama_aset || 'Aset Tidak Dikenal'}
                       </h3>
                       <p className="text-[10px] font-mono text-slate-400 mt-1">
-                        {item.kode || item.id || loan.id_aset}
+                        {asetDetail?.kode_aset || asetDetail?.id || loan.id_aset}
                       </p>
                     </div>
 
@@ -372,25 +457,29 @@ export default function PinjamAsetGuest() {
                     <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 text-sm text-slate-600 mb-3">
                       <div className="flex justify-between items-start">
                         <span className="text-xs font-semibold text-slate-400">Keperluan</span>
-                        <span className="text-xs text-slate-600 text-right max-w-[60%] line-clamp-2">{keperluan}</span>
+                        <span className="text-xs text-slate-600 text-right max-w-[60%] line-clamp-2">{loan.keperluan || '—'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-xs font-semibold text-slate-400">Tgl Pinjam</span>
-                        <span className="text-xs text-slate-600">{loan.tanggal}</span>
+                        <span className="text-xs text-slate-600">{loan.tanggal_pinjam || '—'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-xs font-semibold text-slate-400">Tgl Kembali</span>
-                        <span className="text-xs text-slate-600">{loan.tanggal_rencana_kembali || '-'}</span>
+                        <span className="text-xs text-slate-600">{loan.tanggal_kembali || '—'}</span>
                       </div>
+                      {/* Tampilkan catatan admin jika ada */}
+                      {loan.catatan_admin && (
+                        <div className="flex flex-col gap-1 pt-1 border-t border-slate-200">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">Catatan Admin</span>
+                          <span className="text-xs text-slate-600 italic">{loan.catatan_admin}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Badge Status */}
                     <div className="mb-2">
-                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider inline-block ${status === 'Pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                          status === 'Disetujui' ? 'bg-green-50 text-green-600 border border-green-100' :
-                            'bg-red-50 text-red-600 border border-red-100'
-                        }`}>
-                        {status}
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider inline-block ${statusBadge(status)}`}>
+                        {statusLabel(status)}
                       </span>
                     </div>
 
@@ -398,9 +487,9 @@ export default function PinjamAsetGuest() {
                     <div className="border-t border-slate-100 pt-3 mt-auto flex items-center justify-between text-xs text-slate-400">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <User size={12} className="shrink-0" />
-                        <span className="truncate font-semibold">{loan.nama_staf}</span>
+                        <span className="truncate font-semibold">{loan.nama_peminjam}</span>
                       </div>
-                      {status === 'Pending' && (
+                      {status === 'pending' && (
                         <button
                           onClick={() => handleCancel(loan.id)}
                           className="flex items-center gap-1 text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-lg transition-all shrink-0 ml-2"

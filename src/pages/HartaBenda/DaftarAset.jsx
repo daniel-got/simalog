@@ -23,6 +23,7 @@ import Button from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Table } from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
+import { Input, Select } from '../../components/ui/Input';
 import ModalKategoriAset from './ModalKategoriAset';
 import { cn } from '../../utils/cn';
 import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
@@ -42,14 +43,6 @@ const SATUAN_OPTIONS = [
   { value: 'Buah', label: 'Buah' },
   { value: 'Set', label: 'Set' },
 ];
-
-// ── Style konstanta agar konsisten di seluruh form ──────────────────────────
-const INPUT_CLASS =
-  'w-full px-13 py-8 text-sm bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-800 placeholder:text-slate-400';
-const SELECT_CLASS =
-  'w-full px-13 py-8 text-sm bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-800';
-const LABEL_CLASS =
-  'text-xs font-semibold text-slate-500 tracking-wide uppercase mb-1.5 block';
 
 export default function DaftarAset() {
   const navigate = useNavigate();
@@ -109,8 +102,11 @@ export default function DaftarAset() {
     lampiran_url: '',
     // BMN fields
     kode_bmn: '',
-    satuan: '',
+    nup: '',
+    satuan: 'Unit',
     masa_manfaat_bulan: '',
+    jenis_bmn: 'Intrakomptabel',
+    status_operasional: 'Aktif',
   };
 
   const [form, setForm] = useState(initialFormState);
@@ -193,8 +189,11 @@ export default function DaftarAset() {
       lampiran_url: aset.lampiran_url || '',
       // BMN fields
       kode_bmn: aset.kode_bmn || '',
-      satuan: aset.satuan || '',
+      nup: aset.nup || '',
+      satuan: aset.satuan || 'Unit',
       masa_manfaat_bulan: aset.masa_manfaat_bulan || '',
+      jenis_bmn: aset.jenis_bmn || 'Intrakomptabel',
+      status_operasional: aset.status_operasional || 'Aktif',
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -288,8 +287,11 @@ export default function DaftarAset() {
       tanggal_servis_terakhir: form.tanggal_servis_terakhir || null,
       // BMN fields — boleh null
       kode_bmn: form.kode_bmn?.trim() || null,
-      satuan: form.satuan || null,
+      nup: form.nup ? Number(form.nup) : null,
+      satuan: form.satuan || 'Unit',
       masa_manfaat_bulan: form.masa_manfaat_bulan ? Number(form.masa_manfaat_bulan) : null,
+      jenis_bmn: form.jenis_bmn || 'Intrakomptabel',
+      status_operasional: form.status_operasional || 'Aktif',
     };
 
     let success;
@@ -431,166 +433,103 @@ export default function DaftarAset() {
             {/* ── Baris 1: Kode & Nama ── */}
             <div className="grid grid-cols-2 gap-13">
               {/* Kode Aset — dapat diisi manual atau di-generate otomatis */}
-              <div>
-                <label className={LABEL_CLASS}>
-                  Kode Aset / Inventaris
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder={loadingKode ? 'Membuat kode otomatis...' : 'Contoh: KODE/ASET/2026'}
-                    value={form.kode_aset}
-                    onChange={e => setForm(f => ({ ...f, kode_aset: e.target.value }))}
-                    className={cn(
-                      INPUT_CLASS,
-                      loadingKode && 'animate-pulse'
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={LABEL_CLASS}>
-                  Nama Aset <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Laptop Asus ROG / AC Split 1.5 PK"
-                  value={form.nama_aset}
-                  onChange={e => setForm(f => ({ ...f, nama_aset: e.target.value }))}
-                  required
-                  className={INPUT_CLASS}
-                />
-              </div>
+              <Input
+                label="Kode Aset / Inventaris"
+                type="text"
+                placeholder={loadingKode ? 'Membuat kode otomatis...' : 'Contoh: KODE/ASET/2026'}
+                value={form.kode_aset}
+                onChange={e => setForm(f => ({ ...f, kode_aset: e.target.value }))}
+                className={loadingKode ? 'animate-pulse' : ''}
+              />
+              <Input
+                label="Nama Aset"
+                required
+                type="text"
+                placeholder="Contoh: Laptop Asus ROG / AC Split 1.5 PK"
+                value={form.nama_aset}
+                onChange={e => setForm(f => ({ ...f, nama_aset: e.target.value }))}
+              />
             </div>
 
             {/* ── Baris 2: Kelompok & Sub-Kelompok (Progressive) ── */}
             <div className="grid grid-cols-2 gap-13">
-              <div>
-                <label className={LABEL_CLASS}>
-                  Kelompok Aset <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={form.kelompok_id}
-                  onChange={e => setForm(f => ({
-                    ...f,
-                    kelompok_id: e.target.value,
-                    sub_kelompok_id: '',
-                    kode_aset: editId ? f.kode_aset : '',
-                  }))}
-                  required
-                  className={SELECT_CLASS}
-                >
-                  <option value="">Pilih...</option>
-                  {kelompokAset.map(k => (
-                    <option key={k.id} value={k.id}>{k.nama}</option>
-                  ))}
-                </select>
-              </div>
-
+              <Select
+                label="Kelompok Aset"
+                required
+                options={kelompokAset.map(k => ({ label: k.nama, value: k.id }))}
+                value={form.kelompok_id}
+                onChange={e => setForm(f => ({
+                  ...f,
+                  kelompok_id: e.target.value,
+                  sub_kelompok_id: '',
+                  kode_aset: editId ? f.kode_aset : '',
+                }))}
+              />
               {/* Sub-kelompok: HANYA tampil setelah kelompok dipilih */}
               {form.kelompok_id && (
-                <div>
-                  <label className={LABEL_CLASS}>
-                    Subkelompok Aset <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={form.sub_kelompok_id}
-                    onChange={e => setForm(f => ({ ...f, sub_kelompok_id: e.target.value }))}
-                    required
-                    className={SELECT_CLASS}
-                  >
-                    <option value="">Pilih...</option>
-                    {filteredSubs.map(s => (
-                      <option key={s.id} value={s.id}>{s.nama}</option>
-                    ))}
-                  </select>
-                </div>
+                <Select
+                  label="Subkelompok Aset"
+                  required
+                  options={filteredSubs.map(s => ({ label: s.nama, value: s.id }))}
+                  value={form.sub_kelompok_id}
+                  onChange={e => setForm(f => ({ ...f, sub_kelompok_id: e.target.value }))}
+                />
               )}
             </div>
 
             {/* ── Baris 3: Merek, No Seri, Lokasi, PIC ── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-13">
-              <div>
-                <label className={LABEL_CLASS}>Merek / Tipe</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Samsung / AR13"
-                  value={form.merek_tipe}
-                  onChange={e => setForm(f => ({ ...f, merek_tipe: e.target.value }))}
-                  className={INPUT_CLASS}
-                />
-              </div>
-
-              <div>
-                <label className={LABEL_CLASS}>Nomor Seri / Plat</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: SN-2026-88"
-                  value={form.nomor_seri_plat}
-                  onChange={e => setForm(f => ({ ...f, nomor_seri_plat: e.target.value }))}
-                  className={INPUT_CLASS}
-                />
-              </div>
-
-              <div>
-                <label className={LABEL_CLASS}>Lokasi / Ruangan</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: R. Rapat Lt.2"
-                  value={form.lokasi_ruangan}
-                  onChange={e => setForm(f => ({ ...f, lokasi_ruangan: e.target.value }))}
-                  className={INPUT_CLASS}
-                />
-              </div>
-
-              <div>
-                <label className={LABEL_CLASS}>Penanggung Jawab</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Budi Santoso"
-                  value={form.penanggung_jawab}
-                  onChange={e => setForm(f => ({ ...f, penanggung_jawab: e.target.value }))}
-                  className={INPUT_CLASS}
-                />
-              </div>
+              <Input
+                label="Merek / Tipe"
+                type="text"
+                placeholder="Contoh: Samsung / AR13"
+                value={form.merek_tipe}
+                onChange={e => setForm(f => ({ ...f, merek_tipe: e.target.value }))}
+              />
+              <Input
+                label="Nomor Seri / Plat"
+                type="text"
+                placeholder="Contoh: SN-2026-88"
+                value={form.nomor_seri_plat}
+                onChange={e => setForm(f => ({ ...f, nomor_seri_plat: e.target.value }))}
+              />
+              <Input
+                label="Lokasi / Ruangan"
+                type="text"
+                placeholder="Contoh: R. Rapat Lt.2"
+                value={form.lokasi_ruangan}
+                onChange={e => setForm(f => ({ ...f, lokasi_ruangan: e.target.value }))}
+              />
+              <Input
+                label="Penanggung Jawab"
+                type="text"
+                placeholder="Contoh: Budi Santoso"
+                value={form.penanggung_jawab}
+                onChange={e => setForm(f => ({ ...f, penanggung_jawab: e.target.value }))}
+              />
             </div>
 
             {/* ── Baris 4: Harga, Tgl Beli, Kondisi ── */}
             <div className="grid grid-cols-3 gap-13">
-              <div>
-                <label className={LABEL_CLASS}>Harga Beli (Rp)</label>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={form.harga_beli}
-                  onChange={e => setForm(f => ({ ...f, harga_beli: e.target.value }))}
-                  className={INPUT_CLASS}
-                />
-              </div>
-
-              <div>
-                <label className={LABEL_CLASS}>Tanggal Perolehan</label>
-                <input
-                  type="date"
-                  value={form.tanggal_perolehan}
-                  onChange={e => setForm(f => ({ ...f, tanggal_perolehan: e.target.value }))}
-                  className={INPUT_CLASS}
-                />
-              </div>
-
-              <div>
-                <label className={LABEL_CLASS}>Kondisi Awal</label>
-                <select
-                  value={form.status_kondisi}
-                  onChange={e => setForm(f => ({ ...f, status_kondisi: e.target.value }))}
-                  className={SELECT_CLASS}
-                >
-                  {KONDISI_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
+              <Input
+                label="Harga Beli (Rp)"
+                type="number"
+                placeholder="0"
+                value={form.harga_beli}
+                onChange={e => setForm(f => ({ ...f, harga_beli: e.target.value }))}
+              />
+              <Input
+                label="Tanggal Perolehan"
+                type="date"
+                value={form.tanggal_perolehan}
+                onChange={e => setForm(f => ({ ...f, tanggal_perolehan: e.target.value }))}
+              />
+              <Select
+                label="Kondisi Awal"
+                options={KONDISI_OPTIONS}
+                value={form.status_kondisi}
+                onChange={e => setForm(f => ({ ...f, status_kondisi: e.target.value }))}
+              />
             </div>
             {/* ── Config Maintenance ── */}
             {form.sub_kelompok_id && mType !== 'tidak' && (
@@ -600,27 +539,23 @@ export default function DaftarAset() {
                     <p className="text-[10px] font-black text-blue-700 uppercase tracking-wider flex items-center gap-2">
                       <Car size={14} /> Servis Berbasis Kilometer (KM)
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <input
-                        type="text"
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-13">
+                      <Input
                         placeholder="No. Polisi"
                         value={form.no_polisi}
                         onChange={e => setForm(f => ({ ...f, no_polisi: e.target.value }))}
-                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
                       />
-                      <input
+                      <Input
                         type="number"
                         placeholder="KM Saat Ini"
                         value={form.km_saat_ini}
                         onChange={e => setForm(f => ({ ...f, km_saat_ini: e.target.value }))}
-                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
                       />
-                      <input
+                      <Input
                         type="number"
                         placeholder="Interval KM Servis"
                         value={form.interval_km}
                         onChange={e => setForm(f => ({ ...f, interval_km: e.target.value }))}
-                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
                       />
                     </div>
                   </div>
@@ -631,19 +566,17 @@ export default function DaftarAset() {
                     <p className="text-[10px] font-black text-amber-700 uppercase tracking-wider flex items-center gap-2">
                       <Clock size={14} /> Servis Berkala Bulanan
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <input
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
+                      <Input
                         type="number"
                         placeholder="Interval (Bulan)"
                         value={form.interval_bulan}
                         onChange={e => setForm(f => ({ ...f, interval_bulan: e.target.value }))}
-                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
                       />
-                      <input
+                      <Input
                         type="date"
                         value={form.tanggal_servis_terakhir}
                         onChange={e => setForm(f => ({ ...f, tanggal_servis_terakhir: e.target.value }))}
-                        className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
                       />
                     </div>
                   </div>
@@ -651,13 +584,69 @@ export default function DaftarAset() {
               </div>
             )}
 
+            {/* ── Informasi BMN (Opsional) ── */}
+            <div className="pt-5 border-t border-slate-100 mt-8">
+              <p className="text-sm font-bold text-slate-700 mb-8 flex items-center gap-5">
+                <FileText size={16} className="text-teal-600" /> Informasi BMN (opsional)
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-13 mb-5">
+                <Select
+                  label="Jenis Aset BMN"
+                  options={[{label: 'Intrakomptabel', value: 'Intrakomptabel'}, {label: 'Ekstrakomptabel', value: 'Ekstrakomptabel'}]}
+                  value={form.jenis_bmn}
+                  onChange={e => setForm(f => ({ ...f, jenis_bmn: e.target.value }))}
+                />
+                <Select
+                  label="Status Operasional"
+                  options={[{label: 'Aktif', value: 'Aktif'}, {label: 'Usul Hapus', value: 'Usul Hapus'}, {label: 'Dihapuskan', value: 'Dihapuskan'}]}
+                  value={form.status_operasional}
+                  onChange={e => setForm(f => ({ ...f, status_operasional: e.target.value }))}
+                />
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-13">
+                <div className="flex flex-col gap-1">
+                  <Input
+                    label="Kode Barang BMN"
+                    type="text"
+                    placeholder="Contoh: 3.02.01.01.002"
+                    value={form.kode_bmn}
+                    onChange={e => setForm(f => ({ ...f, kode_bmn: e.target.value }))}
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    Boleh sama untuk beberapa unit sejenis (dibedakan lewat NUP)
+                  </p>
+                </div>
+                <Input
+                  label="NUP"
+                  type="number"
+                  placeholder="Kosongkan untuk dihitung otomatis"
+                  value={form.nup}
+                  onChange={e => setForm(f => ({ ...f, nup: e.target.value }))}
+                />
+                <Select
+                  label="Satuan"
+                  options={SATUAN_OPTIONS}
+                  value={form.satuan}
+                  onChange={e => setForm(f => ({ ...f, satuan: e.target.value }))}
+                />
+                <Input
+                  label="Masa Manfaat (bulan)"
+                  type="number"
+                  placeholder="Contoh: 48"
+                  value={form.masa_manfaat_bulan}
+                  onChange={e => setForm(f => ({ ...f, masa_manfaat_bulan: e.target.value }))}
+                />
+              </div>
+            </div>
 
             {/* ── Upload Foto & Lampiran (Opsional) ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
-              <div>
-                <label className={LABEL_CLASS}>Foto Aset <span className="text-rose-500">*</span></label>
-                <div className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded-xl">
+              <div className="flex flex-col gap-5 w-full">
+                <label className="text-xs font-semibold text-slate-500 tracking-wide uppercase flex items-center gap-1">
+                  Foto Aset <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex items-center gap-3 bg-white px-13 py-8 border border-slate-200 rounded-xl">
                   <input
                     type="file"
                     accept="image/*"
@@ -671,9 +660,11 @@ export default function DaftarAset() {
                 </div>
               </div>
 
-              <div>
-                <label className={LABEL_CLASS}>Upload Lampiran (Opsional)</label>
-                <div className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded-xl">
+              <div className="flex flex-col gap-5 w-full">
+                <label className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
+                  Upload Lampiran (Opsional)
+                </label>
+                <div className="flex items-center gap-3 bg-white px-13 py-8 border border-slate-200 rounded-xl">
                   <input
                     type="file"
                     accept="image/*,application/pdf"

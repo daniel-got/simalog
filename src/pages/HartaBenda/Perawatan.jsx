@@ -41,9 +41,9 @@ export default function Perawatan() {
 
   useEffect(() => { setCurrentPage(1); }, [filterText, filterKategori, filterDate]);
 
-  // Options unit spesifik: {nama_aset} ({kode_aset})
+  // Options unit spesifik: Nama Aset - NUP - Lokasi
   const asetOptions = dataAsetAman.map(a => ({
-    label: `${a.nama_aset} (${a.kode_aset || a.id})`,
+    label: `${a.nama_aset} - NUP ${a.nup || '-'} - ${a.lokasi_ruangan || '-'}`,
     value: String(a.id),
   }));
 
@@ -231,7 +231,7 @@ export default function Perawatan() {
       case 'Rusak Berat':
         return 'bg-rose-50 text-rose-700 border-rose-200';
       case 'Dalam Perbaikan':
-        return 'bg-sky-50 text-sky-700 border-sky-200';
+        return 'bg-sky-50 text-teal-700 border-teal-200';
       case 'Dihentikan':
         return 'bg-slate-100 text-slate-600 border-slate-200';
       default:
@@ -265,10 +265,10 @@ export default function Perawatan() {
 
       {/* Form Catat Perawatan / Biaya */}
       {open && (
-        <Card className="border-orange-200 bg-orange-50/30 p-21">
+        <Card className="border-teal-200 bg-teal-50/30 p-21">
           <div className="flex items-center justify-between mb-13">
             <p className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <Wrench size={18} className="text-orange-600" />
+              <Wrench size={18} className="text-teal-600" />
               Catat Biaya Perawatan
             </p>
           </div>
@@ -285,31 +285,31 @@ export default function Perawatan() {
 
             {/* Kartu Informasi Servis Berbasis Kilometer (KM) ketika kendaraan/aset KM dipilih */}
             {selectedAset && selectedMaintenanceType === 'km' && (
-              <div className="bg-sky-50/80 border border-sky-200/90 rounded-2xl p-13 space-y-13 animate-in fade-in duration-200">
+              <div className="bg-teal-50/80 border border-teal-200/90 rounded-2xl p-13 space-y-13 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-sky-800 flex items-center gap-2">
-                    <Gauge size={16} className="text-sky-600" /> Servis Berbasis Kilometer (KM)
+                  <p className="text-xs font-bold text-teal-800 flex items-center gap-2">
+                    <Gauge size={16} className="text-teal-600" /> Servis Berbasis Kilometer (KM)
                   </p>
                   {(selectedAset.no_polisi || selectedAset.nomor_seri_plat) && (
-                    <span className="text-[10px] font-mono font-bold bg-white text-sky-700 px-8 py-3 rounded-md border border-sky-200 shadow-xs">
+                    <span className="text-[10px] font-mono font-bold bg-white text-teal-700 px-8 py-3 rounded-md border border-teal-200 shadow-xs">
                       Plat / No. Seri: {selectedAset.no_polisi || selectedAset.nomor_seri_plat}
                     </span>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-13 text-xs">
-                  <div className="bg-white p-13 rounded-xl border border-sky-100 flex flex-col justify-between">
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">KM Terakhir Tercatat</span>
+                  <div className="bg-white p-13 rounded-xl border border-teal-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">KM Terakhir Tercatat</span>
                     <span className="text-sm font-mono font-black text-slate-800 mt-1">{selectedAset.km_saat_ini || 0} KM</span>
                   </div>
 
-                  <div className="bg-white p-13 rounded-xl border border-sky-100 flex flex-col justify-between">
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Interval Servis Rutin</span>
-                    <span className="text-sm font-mono font-black text-sky-700 mt-1">{selectedAset.interval_km || 5000} KM</span>
+                  <div className="bg-white p-13 rounded-xl border border-teal-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Interval Servis Rutin</span>
+                    <span className="text-sm font-mono font-black text-teal-700 mt-1">{selectedAset.interval_km || 5000} KM</span>
                   </div>
 
-                  <div className="bg-white p-13 rounded-xl border border-sky-100 flex flex-col justify-between">
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Target KM Servis Berikutnya</span>
+                  <div className="bg-white p-13 rounded-xl border border-teal-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target KM Servis Berikutnya</span>
                     <span className="text-sm font-mono font-black text-emerald-600 mt-1">
                       {Number(form.km_saat_servis || selectedAset.km_saat_ini || 0) + Number(selectedAset.interval_km || 5000)} KM
                     </span>
@@ -372,7 +372,7 @@ export default function Perawatan() {
               <Button type="button" variant="ghost" size="sm" onClick={closeForm}>
                 Batal
               </Button>
-              <Button type="submit" size="sm" className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+              <Button type="submit" size="sm">
                 Simpan Catatan
               </Button>
             </div>
@@ -383,18 +383,18 @@ export default function Perawatan() {
       {/* Baris Search & Filter */}
       <div className="bg-slate-50 p-13 rounded-2xl border border-slate-100 shadow-sm space-y-8">
         <div className="relative">
-          <Search size={14} className="absolute left-13 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             placeholder="Cari unit aset, kode, lokasi, atau keterangan..."
             value={filterText}
             onChange={e => setFilterText(e.target.value)}
-            className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
+            className="w-full pl-11 pr-4 py-2.5 h-11 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
         </div>
         <div className="grid grid-cols-2 gap-8">
           <select
-            className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
+            className="w-full px-4 py-2.5 h-11 text-sm font-medium bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-700"
             value={filterKategori}
             onChange={e => setFilterKategori(e.target.value)}
           >
@@ -404,7 +404,7 @@ export default function Perawatan() {
           </select>
           <input
             type="date"
-            className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
+            className="w-full px-4 py-2.5 h-11 text-sm font-medium bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-700"
             value={filterDate}
             onChange={e => setFilterDate(e.target.value)}
           />
@@ -413,9 +413,9 @@ export default function Perawatan() {
 
       {/* Tabel Data Perawatan */}
       {filtered.length === 0 ? (
-        <div className="text-center py-34 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
-          <Wrench size={28} className="mx-auto mb-5 text-slate-300" />
-          Belum ada catatan perawatan aset.
+        <div className="flex flex-col items-center justify-center py-13 text-slate-400 bg-slate-50/60 rounded-xl border border-slate-100 border-dashed">
+          <Wrench size={20} className="mb-3 text-slate-300" />
+          <p className="text-[11px] font-medium">Belum ada catatan perawatan aset.</p>
         </div>
       ) : (
         <div className="space-y-21">
@@ -428,16 +428,21 @@ export default function Perawatan() {
                   <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{p.tanggal}</td>
                   <td className="px-13 py-13">
                     <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-slate-800">{getAsetName(p.id_aset)}</span>
-                      <span className="text-[10px] font-mono text-slate-400 mt-0.5">
-                        {asetObj?.kode_aset || '—'} · {asetObj?.lokasi_ruangan || '-'}
-                      </span>
+                      <span className="text-sm font-bold text-slate-800">{getAsetName(p.id_aset)}</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="font-mono text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100/60">
+                          {asetObj?.kode_aset || '—'}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-400">
+                          {asetObj?.lokasi_ruangan || '-'}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-13 py-13">
                     <span className={cn(
                       'text-[10px] font-bold px-8 py-3 rounded-md inline-block',
-                      p.kategori_biaya === 'Servis Rutin' ? 'bg-teal-50 text-teal-700' : 'bg-orange-50 text-orange-700'
+                      p.kategori_biaya === 'Servis Rutin' ? 'bg-teal-50 text-teal-700' : 'bg-rose-50 text-rose-600'
                     )}>
                       {p.kategori_biaya}
                     </span>
@@ -454,20 +459,20 @@ export default function Perawatan() {
                     {p.keterangan || '-'}
                   </td>
                   <td className="px-13 py-13">
-                    <div className="flex gap-5">
+                    <div className="flex items-center gap-5 justify-center">
                       <button
                         onClick={() => handleEdit(p)}
-                        className="w-26 h-26 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors"
+                        className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors"
                         title="Edit"
                       >
-                        <Pencil size={13} />
+                        <Pencil size={12} />
                       </button>
                       <button
                         onClick={() => handleDelete(p)}
-                        className="w-26 h-26 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                        className="w-21 h-21 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors"
                         title="Hapus"
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={12} />
                       </button>
                     </div>
                   </td>

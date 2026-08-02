@@ -17,18 +17,23 @@ const createMasukSlice = (set, get) => ({
         if (error) { alert('Gagal catat masuk: ' + error.message); return; }
 
         if (data) {
+            // BUG FIX: Jika di Supabase sudah ada Database Trigger yang mengupdate stok
+            // saat tabel log_transaksi ditambah, memanggil RPC ini akan menyebabkan stok terhitung ganda (double-count).
+            // Maka pemanggilan manual RPC ini dinonaktifkan.
+            /*
             const { error: rpcError } = await supabase.rpc('adjust_stok', {
                 p_kode_barang: item.kode_barang,
                 p_delta: payload.jumlah
             });
             if (rpcError) console.error('Gagal update stok:', rpcError);
-
+            */
             get().fetchData();
         }
     },
 
     updateLogTransaksi: async (id, oldItem, newItem) => {
-        // 1. Revert efek stok lama
+        /*
+        // Dinonaktifkan karena DB trigger sudah menghandle ini saat log diupdate
         const revertDelta = oldItem.jenis_transaksi === 'Masuk'
             ? -oldItem.jumlah
             : oldItem.jumlah;
@@ -46,6 +51,7 @@ const createMasukSlice = (set, get) => ({
             p_delta: applyDelta
         });
         if (applyError) console.error('Gagal apply stok baru:', applyError);
+        */
 
         // 3. Update log
         const payload = {
@@ -61,13 +67,15 @@ const createMasukSlice = (set, get) => ({
     },
 
     deleteLogTransaksi: async (id, item) => {
-        // Revert efek stok
+        /*
+        // Revert efek stok (ditangani oleh DB trigger saat log dihapus)
         const revertDelta = item.jenis_transaksi === 'Masuk' ? -item.jumlah : item.jumlah;
         const { error: revertError } = await supabase.rpc('adjust_stok', {
             p_kode_barang: item.kode_barang,
             p_delta: revertDelta
         });
         if (revertError) console.error('Gagal revert stok:', revertError);
+        */
 
         // Delete log
         const { error } = await supabase.from('log_transaksi').delete().eq('id', id);
