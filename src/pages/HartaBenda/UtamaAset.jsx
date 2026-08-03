@@ -37,8 +37,8 @@ export default function UtamaAset() {
     async function fetchAset() {
       try {
         const { data, error } = await supabase
-          .from('daftar_aset')
-          .select('*')
+          .from('assets')
+          .select('*, kelompok_aset(nama)')
           .order('created_at', { ascending: false });
         if (error) {
           console.error('Error fetching assets:', error);
@@ -90,7 +90,7 @@ export default function UtamaAset() {
   const chartData = useMemo(() => {
     const counts = {};
     aset.forEach((a) => {
-      const cat = a.kategori_aset || 'Lainnya';
+      const cat = a.kelompok_aset?.nama || 'Lainnya';
       counts[cat] = (counts[cat] || 0) + 1;
     });
     return Object.keys(counts).map((key) => ({
