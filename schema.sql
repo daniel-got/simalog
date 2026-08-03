@@ -154,3 +154,82 @@ CREATE POLICY "Admin Delete Permintaan" ON permintaan FOR DELETE USING (
 -- CREATE POLICY "Allow Delete"
 --   ON storage.objects FOR DELETE
 --   USING ( bucket_id = 'images' );
+
+
+-- =========================================================================
+-- TABEL & POLICY HARTA BENDA (ASET, PERAWATAN, AKTIVITAS)
+-- =========================================================================
+
+-- 9. Buat Tabel Daftar Aset
+-- CREATE TABLE daftar_aset (
+--   id TEXT PRIMARY KEY,
+--   nama_aset TEXT NOT NULL,
+--   kategori_aset TEXT NOT NULL,
+--   merek_tipe TEXT,
+--   nomor_seri_plat TEXT,
+--   lokasi_ruangan TEXT NOT NULL,
+--   tanggal_perolehan DATE NOT NULL,
+--   harga_beli NUMERIC NOT NULL DEFAULT 0,
+--   status_kondisi TEXT NOT NULL DEFAULT 'Baik' CHECK (status_kondisi IN ('Baik', 'Rusak Ringan', 'Rusak Berat', 'Dihapuskan')),
+--   image_url TEXT,
+--   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+-- );
+
+-- 10. Buat Tabel Log Perawatan Aset
+-- CREATE TABLE log_perawatan_aset (
+--   id BIGSERIAL PRIMARY KEY,
+--   id_aset TEXT REFERENCES daftar_aset(id) ON DELETE CASCADE,
+--   kategori_biaya TEXT NOT NULL,
+--   total_biaya NUMERIC NOT NULL DEFAULT 0,
+--   tanggal DATE NOT NULL,
+--   keterangan TEXT,
+--   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+-- );
+
+-- 11. Buat Tabel Log Aktivitas Aset
+-- CREATE TABLE log_aktivitas_aset (
+--   id BIGSERIAL PRIMARY KEY,
+--   id_aset TEXT REFERENCES daftar_aset(id) ON DELETE CASCADE,
+--   jenis_aktivitas TEXT NOT NULL,
+--   nama_staf TEXT NOT NULL,
+--   tanggal DATE NOT NULL,
+--   tanggal_rencana_kembali DATE,
+--   keterangan TEXT,
+--   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+-- );
+
+-- 12. Aktifkan RLS pada semua tabel Harta Benda
+-- ALTER TABLE daftar_aset ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE log_perawatan_aset ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE log_aktivitas_aset ENABLE ROW LEVEL SECURITY;
+
+-- 13. Kebijakan (Policy) Tabel `daftar_aset`
+-- CREATE POLICY "Public Read Aset" ON daftar_aset FOR SELECT USING (true);
+-- CREATE POLICY "Admin Insert Aset" ON daftar_aset FOR INSERT WITH CHECK (
+--   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'Admin')
+-- );
+-- CREATE POLICY "Admin Update Aset" ON daftar_aset FOR UPDATE USING (
+--   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'Admin')
+-- );
+-- CREATE POLICY "Admin Delete Aset" ON daftar_aset FOR DELETE USING (
+--   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'Admin')
+-- );
+
+-- 14. Kebijakan (Policy) Tabel `log_perawatan_aset`
+-- CREATE POLICY "Public Read Perawatan Aset" ON log_perawatan_aset FOR SELECT USING (true);
+-- CREATE POLICY "Public Insert Perawatan Aset" ON log_perawatan_aset FOR INSERT WITH CHECK (true);
+-- CREATE POLICY "Admin Update Perawatan Aset" ON log_perawatan_aset FOR UPDATE USING (
+--   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'Admin')
+-- );
+-- CREATE POLICY "Admin Delete Perawatan Aset" ON log_perawatan_aset FOR DELETE USING (
+--   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'Admin')
+-- );
+
+-- 15. Kebijakan (Policy) Tabel `log_aktivitas_aset`
+-- CREATE POLICY "Public Read Aktivitas Aset" ON log_aktivitas_aset FOR SELECT USING (true);
+-- CREATE POLICY "Public Insert Aktivitas Aset" ON log_aktivitas_aset FOR INSERT WITH CHECK (true);
+-- CREATE POLICY "Public Delete Aktivitas Aset" ON log_aktivitas_aset FOR DELETE USING (true);
+-- CREATE POLICY "Admin Update Aktivitas Aset" ON log_aktivitas_aset FOR UPDATE USING (
+--   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'Admin')
+-- );
+
