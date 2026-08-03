@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Download, LayoutGrid, List, Search, QrCode, CheckCircle2, XCircle, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Download, LayoutGrid, List, Search, QrCode, CheckCircle2, XCircle, Pencil, Trash2, User } from 'lucide-react';
 import useLogistikStore from '../../store/Logistik/useLogistikStore';
 import { Card } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -58,6 +58,11 @@ export default function Minta() {
   });
 
   const paged = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -262,8 +267,8 @@ export default function Minta() {
           Tidak ada data transaksi permintaan.
         </div>
       ) : viewMode === 'card' ? (
-        <div className="space-y-21">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {paged.map(m => {
               const brgInfo = barang.find(b => b.kode_barang === m.kode_barang);
               return (
@@ -288,65 +293,81 @@ export default function Minta() {
           />
         </div>
       ) : (
-        <div className="space-y-21">
-          <Table headers={['Tanggal', 'Barang', 'Qty', 'Pemohon', 'Status', 'Aksi']}>
-            {paged.map(m => {
-              const brgInfo = barang.find(b => b.kode_barang === m.kode_barang);
-              const status = m.status_persetujuan || 'Diajukan';
-              return (
-                <tr key={m.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{m.tanggal_minta}</td>
-                  <td className="px-13 py-13">
-                    <div className="flex flex-col">
-                      <span className="font-mono text-[10px] text-teal-700 font-bold">{m.kode_barang}</span>
-                      <span className="text-xs font-semibold text-slate-800 mt-1">{brgInfo?.nama_barang || '-'}</span>
-                    </div>
-                  </td>
-                  <td className="px-13 py-13">
-                    <span className="bg-blue-100 text-blue-700 text-xs font-black px-8 py-3 rounded-lg">
-                      {m.jumlah}
-                    </span>
-                  </td>
-                  <td className="px-13 py-13 text-xs text-slate-600 font-medium">{m.nama_pemohon}</td>
-                  <td className="px-13 py-13">
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${
-                      status === 'Disetujui' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                      status === 'Ditolak' ? 'bg-rose-50 text-rose-600 border-rose-200' :
-                      'bg-amber-50 text-amber-600 border-amber-200'
-                    }`}>
-                      {status}
-                    </span>
-                  </td>
-                  <td className="px-13 py-13">
-                    <div className="flex items-center gap-8">
-                      {currentUser?.role === 'Admin' && (status === 'Diajukan' || status === 'Pending') && (
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleUpdateStatus(m.id, 'Disetujui')}
-                            className="text-[10px] font-bold px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors flex items-center gap-1"
-                            title="Setujui Permintaan"
-                          >
-                            <CheckCircle2 size={11} /> Setujui
-                          </button>
-                          <button
-                            onClick={() => handleUpdateStatus(m.id, 'Ditolak')}
-                            className="text-[10px] font-bold px-2 py-1 bg-rose-600 text-white rounded hover:bg-rose-700 transition-colors flex items-center gap-1"
-                            title="Tolak Permintaan"
-                          >
-                            <XCircle size={11} /> Tolak
-                          </button>
-                        </div>
-                      )}
-                      <div className="flex gap-5">
-                        <button onClick={() => handleEdit(m)} className="text-teal-600 p-5 hover:bg-teal-50 rounded-lg text-xs font-semibold">Edit</button>
-                        <button onClick={() => handleDelete(m)} className="text-rose-600 p-5 hover:bg-rose-50 rounded-lg text-xs font-semibold">Hapus</button>
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <Table headers={['Tanggal', 'Nama Barang & Kode', 'Pemohon', 'Minta Qty', 'Stok Gudang', 'Status', 'Aksi']}>
+              {paged.map(m => {
+                const brgInfo = barang.find(b => b.kode_barang === m.kode_barang);
+                const status = m.status_persetujuan || 'Diajukan';
+                return (
+                  <tr key={m.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0">
+                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
+                      {formatDate(m.tanggal_minta)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col items-start">
+                        <span className="text-xs font-semibold text-slate-800">{brgInfo?.nama_barang || '-'}</span>
+                        <span className="font-mono text-[10px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded mt-1">{m.kode_barang}</span>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </Table>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <User size={12} className="text-slate-400" />
+                        <span className="text-xs text-slate-600 font-medium">{m.nama_pemohon}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-bold text-slate-700">
+                        {m.jumlah}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-bold text-slate-500">
+                        {brgInfo?.stok_saat_ini || 0}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] font-bold px-3 py-1 rounded-full border ${
+                        status === 'Disetujui' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                        status === 'Ditolak' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                        'bg-amber-50 text-amber-600 border-amber-100'
+                      }`}>
+                        {status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {currentUser?.role === 'Admin' && (status === 'Diajukan' || status === 'Pending') && (
+                          <>
+                            <button
+                              onClick={() => handleUpdateStatus(m.id, 'Disetujui')}
+                              className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
+                              title="Setujui Permintaan"
+                            >
+                              <CheckCircle2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStatus(m.id, 'Ditolak')}
+                              className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
+                              title="Tolak Permintaan"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          </>
+                        )}
+                        <button onClick={() => handleEdit(m)} className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Edit">
+                          <Pencil size={14} />
+                        </button>
+                        <button onClick={() => handleDelete(m)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </Table>
+          </div>
           <Pagination
             total={filtered.length}
             perPage={perPage}

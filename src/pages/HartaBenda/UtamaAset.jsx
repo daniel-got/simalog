@@ -63,6 +63,13 @@ export default function UtamaAset() {
       maximumFractionDigits: 0,
     }).format(n || 0);
 
+  const formatRupiahRingkas = (n) => {
+    if (n >= 1e9) return `Rp ${(n / 1e9).toFixed(1).replace('.', ',')} M`;
+    if (n >= 1e6) return `Rp ${(n / 1e6).toFixed(1).replace('.', ',')} Jt`;
+    if (n >= 1e3) return `Rp ${(n / 1e3).toFixed(1).replace('.', ',')} Rb`;
+    return formatRupiah(n);
+  };
+
   // 1. Empat Kartu Ringkasan
   const totalAset = aset.length;
   const totalNilaiAset = useMemo(() => {
@@ -109,40 +116,32 @@ export default function UtamaAset() {
       {/* ── Stats ── */}
       <section>
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-13">
-          Ringkasan Harta Benda
+          Ringkasan
         </p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-13 lg:gap-21">
           <StatCard
-            title="TOTAL ASET"
+            title="Total Aset"
             value={loading ? '...' : totalAset}
             icon={Archive}
             bg="bg-teal-50"
             iconColor="text-teal-600"
           />
           <StatCard
-            title="TOTAL NILAI ASET"
-            value={
-              loading ? (
-                '...'
-              ) : (
-                <span className="text-xl md:text-2xl font-black text-slate-800 tracking-tight truncate whitespace-nowrap block">
-                  {formatRupiah(totalNilaiAset)}
-                </span>
-              )
-            }
+            title="Total Nilai Aset"
+            value={loading ? '...' : formatRupiahRingkas(totalNilaiAset)}
             icon={DollarSign}
             bg="bg-blue-50"
             iconColor="text-blue-500"
           />
           <StatCard
-            title="KONDISI BAIK"
+            title="Kondisi Baik"
             value={loading ? '...' : totalBaik}
             icon={Shield}
             bg="bg-emerald-50"
             iconColor="text-emerald-500"
           />
           <StatCard
-            title="PERLU PERAWATAN"
+            title="Perlu Perawatan"
             value={loading ? '...' : totalPerluPerawatan}
             icon={Wrench}
             bg="bg-orange-50"
@@ -151,13 +150,13 @@ export default function UtamaAset() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-21 lg:gap-34">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {/* ── Grafik Batang (Kiri Bawah) ── */}
         <section className="lg:col-span-2">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-13">
-            SEBARAN ASET PER KATEGORI
+            Sebaran Aset Per Kategori
           </p>
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-21">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-21 h-full">
             <div className="h-64 w-full">
               {loading ? (
                 <div className="h-full w-full flex items-center justify-center text-slate-400 text-xs">
@@ -171,7 +170,7 @@ export default function UtamaAset() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={chartData}
-                    margin={{ top: 5, right: 5, left: -21, bottom: 5 }}
+                    margin={{ top: 10, right: 5, left: -21, bottom: 20 }}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -180,6 +179,7 @@ export default function UtamaAset() {
                     />
                     <XAxis
                       dataKey="name"
+                      interval={0}
                       tick={{
                         fontSize: 10,
                         fontFamily: 'Inter',
@@ -218,31 +218,28 @@ export default function UtamaAset() {
 
         {/* ── Kartu List / Alert (Kanan Bawah) ── */}
         <section className="lg:col-span-1">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-13">
-            Perlu Perbaikan / Servis
-          </p>
           {loading ? (
             <div className="bg-slate-50 border border-slate-100 rounded-[21px] p-21 h-full flex flex-col items-center justify-center text-slate-400 minimum-h-[250px]">
               <p className="text-xs font-bold text-center">Memuat data...</p>
             </div>
           ) : needRepair.length > 0 ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-[21px] p-21 h-full">
+            <div className="bg-yellow-50/50 border border-yellow-200 rounded-[21px] p-21 h-full">
               <div className="flex items-center gap-8 mb-13">
-                <div className="w-21 h-21 rounded-[8px] bg-amber-100 flex items-center justify-center shrink-0">
-                  <AlertTriangle size={13} className="text-amber-600" />
+                <div className="w-21 h-21 rounded-[8px] bg-yellow-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={13} className="text-yellow-600" />
                 </div>
-                <p className="text-sm font-bold text-amber-800">
+                <p className="text-sm font-bold text-yellow-800">
                   Perlu Servis
                 </p>
-                <span className="ml-auto bg-amber-200 text-amber-800 text-[10px] font-bold px-8 py-2 rounded-full">
+                <span className="ml-auto bg-yellow-200 text-yellow-800 text-[10px] font-bold px-8 py-2 rounded-full">
                   {needRepair.length} aset
                 </span>
               </div>
-              <div className="space-y-8 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-8 max-h-[260px] overflow-y-auto pr-2 custom-scrollbar">
                 {needRepair.map((a) => (
                   <div
                     key={a.id}
-                    className="flex items-center justify-between bg-white rounded-[13px] px-13 py-13 border border-amber-100"
+                    className="flex items-center justify-between bg-white rounded-[13px] px-13 py-13 border border-yellow-100 shadow-sm"
                   >
                     <div className="min-w-0 pr-3">
                       <p className="text-sm font-semibold text-slate-700 leading-tight truncate">
@@ -252,7 +249,7 @@ export default function UtamaAset() {
                         {a.id} · {a.lokasi_ruangan}
                       </p>
                     </div>
-                    <span className="text-red-600 font-bold text-xs leading-none shrink-0 bg-red-50 px-5 py-2 rounded-md">
+                    <span className="text-red-600 font-bold text-xs leading-none shrink-0 bg-red-50 px-3 py-1 rounded-md border border-red-100">
                       {a.status_kondisi}
                     </span>
                   </div>

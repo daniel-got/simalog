@@ -15,6 +15,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { Card } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import { Table } from '../../components/ui/Table';
 
 // ─── Badge Helpers ────────────────────────────────────────────────────────────
 const tingkatBadge = (tingkat) => {
@@ -121,6 +122,7 @@ export default function Persetujuan() {
   const [loadingK, setLoadingK]           = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [isRealtime, setIsRealtime]       = useState(false); // status koneksi realtime
+  const [activeTab, setActiveTab]         = useState('peminjaman'); // 'peminjaman' | 'kerusakan'
 
   // ── Confirm modal state ───────────────────────────────────────────────────
   const [modal, setModal] = useState({
@@ -434,257 +436,155 @@ export default function Persetujuan() {
         </div>
       </div>
 
-      {/* ════════════════════════════════════════════════════════════════════
-          A. PENGAJUAN PEMINJAMAN
-      ════════════════════════════════════════════════════════════════════ */}
-      <div className="space-y-13">
-        {/* Section Header */}
-        <div className="flex items-center gap-8">
-          <div className="w-34 h-34 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-            <ClipboardList size={18} className="text-teal-600" />
-          </div>
-          <div>
-            <p className="text-sm font-black text-slate-800 tracking-tight">
-              Pengajuan Peminjaman
-            </p>
-            <p className="text-[10px] text-slate-400 mt-1">Menunggu persetujuan admin</p>
-          </div>
+      {/* ── Tabs ── */}
+      <div className="flex bg-slate-100 rounded-xl p-3 w-fit mt-5">
+        <button
+          onClick={() => setActiveTab('peminjaman')}
+          className={`px-13 py-5 rounded-lg transition-colors text-xs font-bold flex items-center gap-5 ${activeTab === 'peminjaman' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Pengajuan Peminjaman
           {peminjaman.length > 0 && (
-            <span className="ml-auto inline-flex items-center justify-center min-w-[22px] h-[22px] px-5 bg-teal-100 text-teal-700 text-[10px] font-black rounded-full">
+            <span className={`px-5 py-2 rounded-md text-[9px] ${activeTab === 'peminjaman' ? 'bg-teal-50 text-teal-700' : 'bg-slate-200 text-slate-500'}`}>
               {peminjaman.length}
             </span>
           )}
-        </div>
-
-        {loadingP ? (
-          <div className="space-y-8">
-            {[1, 2].map(i => <SkeletonRow key={i} />)}
-          </div>
-        ) : peminjaman.length === 0 ? (
-          <EmptyState icon={ClipboardList} label="Tidak ada pengajuan peminjaman yang menunggu persetujuan." />
-        ) : (
-          <div className="space-y-8">
-            {peminjaman.map(item => (
-              <Card
-                key={item.id}
-                className="p-0 overflow-hidden border-slate-100 hover:border-teal-200 transition-all shadow-sm"
-              >
-                <div className="flex items-stretch">
-                  {/* Left accent bar */}
-                  <div className="w-3 bg-teal-500 shrink-0 rounded-l-2xl" />
-
-                  {/* Content */}
-                  <div className="flex-1 flex flex-col md:flex-row md:items-center gap-13 p-13">
-                    {/* Aset Info */}
-                    <div className="flex-1 min-w-0 space-y-5">
-                      <div className="flex items-start gap-8">
-                        <div className="w-34 h-34 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-                          <ClipboardList size={16} className="text-teal-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-black text-slate-800 truncate">
-                            {item.aset?.nama_aset || `Aset #${item.id_aset}`}
-                          </p>
-                          <p className="font-mono text-[10px] text-teal-600 font-bold mt-1">
-                            {item.aset?.kode_aset || '—'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Meta grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pl-[42px]">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <User size={10} /> Peminjam
-                          </p>
-                          <p className="text-xs font-bold text-slate-700 truncate">
-                            {item.nama_peminjam || '—'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <FileText size={10} /> Keperluan
-                          </p>
-                          <p className="text-xs font-medium text-slate-600 truncate">
-                            {item.keperluan || '—'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <Calendar size={10} /> Tgl Pinjam
-                          </p>
-                          <p className="text-xs font-medium text-slate-600">{item.tanggal_pinjam || '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <Calendar size={10} /> Tgl Kembali
-                          </p>
-                          <p className="text-xs font-bold text-teal-700">{item.tanggal_kembali || '—'}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex gap-8 shrink-0 md:flex-col lg:flex-row">
-                      <button
-                        onClick={() => confirmSetujuiPeminjaman(item)}
-                        disabled={actionLoading === item.id}
-                        className="flex items-center gap-5 px-13 py-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-sm shadow-emerald-500/20 whitespace-nowrap"
-                      >
-                        {actionLoading === item.id
-                          ? <Loader2 size={13} className="animate-spin" />
-                          : <CheckCircle2 size={13} />}
-                        Setujui
-                      </button>
-                      <button
-                        onClick={() => confirmTolakPeminjaman(item)}
-                        disabled={actionLoading === item.id}
-                        className="flex items-center gap-5 px-13 py-8 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        <XCircle size={13} /> Tolak
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-slate-100" />
-
-      {/* ════════════════════════════════════════════════════════════════════
-          B. LAPORAN KERUSAKAN
-      ════════════════════════════════════════════════════════════════════ */}
-      <div className="space-y-13">
-        {/* Section Header */}
-        <div className="flex items-center gap-8">
-          <div className="w-34 h-34 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-            <AlertTriangle size={18} className="text-teal-600" />
-          </div>
-          <div>
-            <p className="text-sm font-black text-slate-800 tracking-tight">
-              Laporan Kerusakan
-            </p>
-            <p className="text-[10px] text-slate-400 mt-1">Menunggu pengecekan & verifikasi</p>
-          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('kerusakan')}
+          className={`px-13 py-5 rounded-lg transition-colors text-xs font-bold flex items-center gap-5 ${activeTab === 'kerusakan' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Laporan Kerusakan
           {kerusakan.length > 0 && (
-            <span className="ml-auto inline-flex items-center justify-center min-w-[22px] h-[22px] px-5 bg-teal-100 text-teal-700 text-[10px] font-black rounded-full">
+            <span className={`px-5 py-2 rounded-md text-[9px] ${activeTab === 'kerusakan' ? 'bg-teal-50 text-teal-700' : 'bg-slate-200 text-slate-500'}`}>
               {kerusakan.length}
             </span>
           )}
-        </div>
-
-        {loadingK ? (
-          <div className="space-y-8">
-            {[1, 2].map(i => <SkeletonRow key={i} />)}
-          </div>
-        ) : kerusakan.length === 0 ? (
-          <EmptyState icon={AlertTriangle} label="Tidak ada laporan kerusakan yang menunggu verifikasi." />
-        ) : (
-          <div className="space-y-8">
-            {kerusakan.map(item => (
-              <Card
-                key={item.id}
-                className="p-0 overflow-hidden border-slate-100 hover:border-teal-200 transition-all shadow-sm"
-              >
-                <div className="flex items-stretch">
-                  {/* Left accent bar */}
-                  <div className={`w-3 shrink-0 rounded-l-2xl ${
-                    item.tingkat === 'Berat'  ? 'bg-rose-500'   :
-                    item.tingkat === 'Sedang' ? 'bg-orange-400' :
-                    'bg-amber-400'
-                  }`} />
-
-                  {/* Content */}
-                  <div className="flex-1 flex flex-col md:flex-row md:items-center gap-13 p-13">
-                    {/* Aset Info */}
-                    <div className="flex-1 min-w-0 space-y-5">
-                      <div className="flex items-start gap-8">
-                        <div className="w-34 h-34 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-                          <AlertOctagon size={16} className="text-teal-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-black text-slate-800 truncate">
-                            {item.aset?.nama_aset || `Aset #${item.id_aset}`}
-                          </p>
-                          <div className="flex items-center gap-5 mt-1">
-                            <p className="font-mono text-[10px] text-teal-600 font-bold">
-                              {item.aset?.kode_aset || '—'}
-                            </p>
-                            {item.tingkat && (
-                              <span className={`text-[10px] font-black px-5 py-1 rounded-full ${tingkatBadge(item.tingkat)}`}>
-                                {item.tingkat}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Meta grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pl-[42px]">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <User size={10} /> Pelapor
-                          </p>
-                          <p className="text-xs font-bold text-slate-700 truncate">
-                            {item.nama_pelapor || '—'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <AlertTriangle size={10} /> Kendala
-                          </p>
-                          <p className="text-xs font-medium text-slate-600 line-clamp-2">
-                            {item.kendala || item.deskripsi || '—'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <Calendar size={10} /> Tanggal
-                          </p>
-                          <p className="text-xs font-medium text-slate-600">{item.tanggal || item.created_at?.split('T')[0] || '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-3">
-                            <ShieldCheck size={10} /> Efek Verifikasi
-                          </p>
-                          <p className="text-xs font-bold text-teal-700">
-                            → {item.tingkat === 'Ringan' ? 'Rusak Ringan' : 'Rusak Berat'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex gap-8 shrink-0 md:flex-col lg:flex-row">
-                      <button
-                        onClick={() => confirmVerifikasiKerusakan(item)}
-                        disabled={actionLoading === item.id}
-                        className="flex items-center gap-5 px-13 py-8 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-sm shadow-teal-500/20 whitespace-nowrap"
-                      >
-                        {actionLoading === item.id
-                          ? <Loader2 size={13} className="animate-spin" />
-                          : <ShieldCheck size={13} />}
-                        Verifikasi
-                      </button>
-                      <button
-                        onClick={() => confirmTolakKerusakan(item)}
-                        disabled={actionLoading === item.id}
-                        className="flex items-center gap-5 px-13 py-8 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        <XCircle size={13} /> Tolak
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
+        </button>
       </div>
+
+      {/* ── Tab Content ── */}
+      {activeTab === 'peminjaman' && (
+        <div className="space-y-13 animate-[fadeUp_.35s_ease_both]">
+          {loadingP ? (
+            <div className="space-y-8">
+              {[1, 2].map(i => <SkeletonRow key={i} />)}
+            </div>
+          ) : peminjaman.length === 0 ? (
+            <EmptyState icon={ClipboardList} label="Tidak ada pengajuan peminjaman yang menunggu persetujuan." />
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <Table headers={['Aset', 'Peminjam', 'Keperluan', 'Tgl Pinjam - Kembali', 'Aksi']}>
+                {peminjaman.map(item => (
+                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0">
+                    <td className="px-13 py-13">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-slate-800">{item.aset?.nama_aset || `Aset #${item.id_aset}`}</span>
+                        <span className="font-mono text-[10px] text-teal-600 font-bold mt-1">{item.aset?.kode_aset || '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-13 py-13 text-xs text-slate-700 font-medium">
+                      {item.nama_peminjam || '—'}
+                    </td>
+                    <td className="px-13 py-13 text-xs text-slate-500 max-w-[200px] truncate" title={item.keperluan || ''}>
+                      {item.keperluan || '—'}
+                    </td>
+                    <td className="px-13 py-13">
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[10px] font-medium text-slate-600 flex items-center gap-3"><Calendar size={10} /> {item.tanggal_pinjam || '—'}</span>
+                        <span className="text-[10px] font-bold text-teal-700 flex items-center gap-3"><Calendar size={10} /> {item.tanggal_kembali || '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-13 py-13 text-right">
+                      <div className="flex justify-end gap-5">
+                        <button
+                          onClick={() => confirmSetujuiPeminjaman(item)}
+                          disabled={actionLoading === item.id}
+                          className="flex items-center gap-5 px-8 py-5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {actionLoading === item.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
+                          Setujui
+                        </button>
+                        <button
+                          onClick={() => confirmTolakPeminjaman(item)}
+                          disabled={actionLoading === item.id}
+                          className="flex items-center gap-5 px-8 py-5 border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          <XCircle size={10} /> Tolak
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'kerusakan' && (
+        <div className="space-y-13 animate-[fadeUp_.35s_ease_both]">
+          {loadingK ? (
+            <div className="space-y-8">
+              {[1, 2].map(i => <SkeletonRow key={i} />)}
+            </div>
+          ) : kerusakan.length === 0 ? (
+            <EmptyState icon={AlertTriangle} label="Tidak ada laporan kerusakan yang menunggu verifikasi." />
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <Table headers={['Aset', 'Pelapor', 'Kendala', 'Tgl Lapor', 'Efek Verifikasi', 'Aksi']}>
+                {kerusakan.map(item => (
+                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0">
+                    <td className="px-13 py-13">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-slate-800">{item.aset?.nama_aset || `Aset #${item.id_aset}`}</span>
+                        <div className="flex items-center gap-5 mt-1">
+                          <span className="font-mono text-[10px] text-teal-600 font-bold">{item.aset?.kode_aset || '—'}</span>
+                          {item.tingkat && (
+                            <span className={`text-[9px] font-black px-5 py-1 rounded-full ${tingkatBadge(item.tingkat)}`}>
+                              {item.tingkat}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-13 py-13 text-xs text-slate-700 font-medium">
+                      {item.nama_pelapor || '—'}
+                    </td>
+                    <td className="px-13 py-13 text-xs text-slate-500 max-w-[200px] truncate" title={item.kendala || item.deskripsi || ''}>
+                      {item.kendala || item.deskripsi || '—'}
+                    </td>
+                    <td className="px-13 py-13 text-[10px] font-medium text-slate-600">
+                      {item.tanggal || item.created_at?.split('T')[0] || '—'}
+                    </td>
+                    <td className="px-13 py-13 text-[10px] font-bold text-teal-700">
+                      → {item.tingkat === 'Ringan' ? 'Rusak Ringan' : 'Rusak Berat'}
+                    </td>
+                    <td className="px-13 py-13 text-right">
+                      <div className="flex justify-end gap-5">
+                        <button
+                          onClick={() => confirmVerifikasiKerusakan(item)}
+                          disabled={actionLoading === item.id}
+                          className="flex items-center gap-5 px-8 py-5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {actionLoading === item.id ? <Loader2 size={10} className="animate-spin" /> : <ShieldCheck size={10} />}
+                          Verifikasi
+                        </button>
+                        <button
+                          onClick={() => confirmTolakKerusakan(item)}
+                          disabled={actionLoading === item.id}
+                          className="flex items-center gap-5 px-8 py-5 border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                        >
+                          <XCircle size={10} /> Tolak
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Confirm Modal ── */}
       <ConfirmModal
