@@ -795,12 +795,12 @@ export default function DaftarAset() {
                   </div>
 
                   {/* Footer: Harga & Tombol Aksi */}
-                  <div className="flex justify-between items-end lg:items-end mt-8 lg:mt-13 pt-5 lg:pt-8 border-t border-slate-50">
-                    <div className="flex flex-col">
+                  <div className="flex justify-between items-center mt-8 lg:mt-13 pt-5 lg:pt-8 border-t border-slate-50">
+                    <div className="flex flex-col min-w-0">
                       <span className="hidden lg:block text-[10px] font-semibold text-slate-500 mb-3">
                         Kondisi: <span className={cn("font-bold px-1.5 py-0.5 rounded text-[9px]", kondisiBadge(a.status_kondisi))}>{a.status_kondisi}</span>
                       </span>
-                      <span className="text-xs font-black text-emerald-600 leading-none">
+                      <span className="text-xs font-black text-emerald-600 leading-none whitespace-nowrap truncate">
                         {formatRupiah(a.harga_beli)}
                       </span>
                       <span className="text-[9px] text-slate-400 font-medium mt-1">
@@ -808,10 +808,10 @@ export default function DaftarAset() {
                       </span>
                     </div>
 
-                    <div className="flex gap-5">
+                    <div className="flex gap-2 shrink-0">
                       <button
                         onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
-                        className="text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors px-8 py-5 flex items-center justify-center text-[10px] font-bold"
+                        className="text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors px-3 py-1.5 flex items-center justify-center text-[10px] font-bold"
                         title="Detail"
                       >
                         Detail
@@ -820,17 +820,17 @@ export default function DaftarAset() {
                         <>
                           <button
                             onClick={() => handleEdit(a)}
-                            className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center"
+                            className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-2 flex items-center justify-center"
                             title="Edit"
                           >
-                            <Pencil size={13} strokeWidth={2.5} />
+                            <Pencil size={14} strokeWidth={2.5} />
                           </button>
                           <button
                             onClick={() => handleDelete(a)}
-                            className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center"
+                            className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-2 flex items-center justify-center"
                             title="Hapus"
                           >
-                            <Trash2 size={13} strokeWidth={2.5} />
+                            <Trash2 size={14} strokeWidth={2.5} />
                           </button>
                         </>
                       )}
