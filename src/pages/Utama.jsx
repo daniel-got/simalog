@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import {
   Package, TrendingDown, TrendingUp, BarChart3,
-  AlertTriangle, Boxes, ChevronRight
+  AlertTriangle, Boxes
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid
 } from 'recharts';
-import useStore from '../store/useStore';
+// Perubahan di sini: Mengarahkan impor ke useLogistikStore baru
+import useStore from '../store/Logistik/useLogistikStore';
 import { StatCard } from '../components/ui/Card';
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -23,10 +24,10 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function Utama() {
   const { barang, masuk, keluar } = useStore();
 
-  const totalJenis  = barang.length;
-  const totalStok   = barang.reduce((s, b) => s + b.stok_saat_ini, 0);
-  const totalMasuk  = masuk.reduce((s, m) => s + parseInt(m.jumlah), 0);
-  const totalKeluar = keluar.reduce((s, k) => s + parseInt(k.jumlah), 0);
+  const totalJenis = barang.length;
+  const totalStok = barang.reduce((s, b) => s + b.stok_saat_ini, 0);
+  const totalMasuk = masuk.reduce((s, m) => s + parseInt(m.jumlah || 0), 0);
+  const totalKeluar = keluar.reduce((s, k) => s + parseInt(k.jumlah || 0), 0);
 
   const top5 = useMemo(() =>
     [...barang]
@@ -46,14 +47,14 @@ export default function Utama() {
       <section>
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-13">Ringkasan</p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-13 lg:gap-21">
-          <StatCard title="Total Jenis"  value={totalJenis}
-            icon={Boxes}     bg="bg-teal-50"   iconColor="text-teal-600" />
-          <StatCard title="Total Stok"   value={totalStok}
-            icon={BarChart3} bg="bg-blue-50"   iconColor="text-blue-500" />
-          <StatCard title="Brg Masuk"    value={totalMasuk}
+          <StatCard title="Total Jenis" value={totalJenis}
+            icon={Boxes} bg="bg-teal-50" iconColor="text-teal-600" />
+          <StatCard title="Total Stok" value={totalStok}
+            icon={BarChart3} bg="bg-blue-50" iconColor="text-blue-500" />
+          <StatCard title="Brg Masuk" value={totalMasuk}
             icon={TrendingDown} bg="bg-emerald-50" iconColor="text-emerald-500" />
-          <StatCard title="Brg Keluar"   value={totalKeluar}
-            icon={TrendingUp}   bg="bg-orange-50"  iconColor="text-orange-500" />
+          <StatCard title="Brg Keluar" value={totalKeluar}
+            icon={TrendingUp} bg="bg-orange-50" iconColor="text-orange-500" />
         </div>
       </section>
 
@@ -62,7 +63,8 @@ export default function Utama() {
         <section className="lg:col-span-2">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-13">Top 5 Stok Terbanyak</p>
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-21">
-            <div className="h-52 w-full">
+            {/* Mengubah h-52 menjadi h-64 (~256px) agar grafik chart Recharts memiliki ruang tinggi yang cukup */}
+            <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={top5} margin={{ top: 5, right: 5, left: -21, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -111,10 +113,10 @@ export default function Utama() {
               </div>
             </div>
           ) : (
-             <div className="bg-slate-50 border border-slate-100 rounded-[21px] p-21 h-full flex flex-col items-center justify-center text-slate-400">
-                <Package size={34} className="mb-5 text-slate-300" />
-                <p className="text-xs font-bold uppercase tracking-widest text-center">Stok Aman</p>
-             </div>
+            <div className="bg-slate-50 border border-slate-100 rounded-[21px] p-21 h-full flex flex-col items-center justify-center text-slate-400 minimum-h-[250px]">
+              <Package size={34} className="mb-5 text-slate-300" />
+              <p className="text-xs font-bold uppercase tracking-widest text-center">Stok Aman</p>
+            </div>
           )}
         </section>
       </div>
