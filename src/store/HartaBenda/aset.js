@@ -75,7 +75,6 @@ const createAsetSlice = (set, get) => ({
         const insertData = {
             ...sanitizedPayload,
             kode_aset: kodeAset || null,
-            status: sanitizedPayload.status || 'aktif',   // default wajib ada
             created_by: userId,
             updated_by: userId,
         };

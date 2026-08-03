@@ -33,11 +33,11 @@ END $$;
 -- Hapus data lama yang tidak valid (isi TEXT yang tidak bisa jadi angka)
 DELETE FROM public.log_perawatan_aset
   WHERE id_aset IS NOT NULL
-    AND id_aset !~ '^\d+$';
+    AND id_aset::TEXT !~ '^\d+$';
 
 DELETE FROM public.log_aktivitas_aset
   WHERE id_aset IS NOT NULL
-    AND id_aset !~ '^\d+$';
+    AND id_aset::TEXT !~ '^\d+$';
 
 -- Konversi tipe
 ALTER TABLE public.log_perawatan_aset
