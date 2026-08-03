@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Package, TrendingDown, TrendingUp,
@@ -44,6 +44,7 @@ const NAV_GROUPS = [
 export default function AppLayout() {
   const { currentUser, logout, fetchData } = useLogistikStore();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Badge count untuk menu Persetujuan
   const [persetujuanCount, setPersetujuanCount] = useState(0);
@@ -127,7 +128,14 @@ export default function AppLayout() {
             return (
               <div key={group.key}>
                 <button
-                  onClick={() => setOpenGroup(isOpen ? null : group.key)}
+                  onClick={() => {
+                    if (!isOpen) {
+                      setOpenGroup(group.key);
+                      navigate(items[0]?.path || '/');
+                    } else {
+                      setOpenGroup(null);
+                    }
+                  }}
                   className={`w-full flex items-center gap-13 px-13 py-13 rounded-xl transition-all duration-150 select-none font-semibold text-sm
                     ${isOpen
                       ? 'bg-teal-600 text-white shadow-sm shadow-teal-500/30'
@@ -229,7 +237,13 @@ export default function AppLayout() {
               return (
                 <button
                   key={group.key}
-                  onClick={() => setOpenGroup(group.key)}
+                  onClick={() => {
+                    if (!isActive) {
+                      setOpenGroup(group.key);
+                      const items = filterByRole(group.items);
+                      if (items.length > 0) navigate(items[0].path);
+                    }
+                  }}
                   className={`flex-1 text-sm font-semibold py-13 rounded-xl transition-all
                     ${isActive
                       ? 'bg-teal-600 text-white shadow-sm'
