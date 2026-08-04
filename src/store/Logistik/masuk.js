@@ -1,5 +1,12 @@
 import { supabase } from '../../lib/supabase';
 
+const adjustStokManual = async (kode, delta) => {
+    const { data } = await supabase.from('barang').select('stok_saat_ini').eq('kode_barang', kode).single();
+    if (data) {
+        await supabase.from('barang').update({ stok_saat_ini: data.stok_saat_ini + delta }).eq('kode_barang', kode);
+    }
+};
+
 const createMasukSlice = (set, get) => ({
     masuk: [],
 
@@ -10,48 +17,28 @@ const createMasukSlice = (set, get) => ({
             jenis_transaksi: 'Masuk',
             jumlah: parseInt(item.jumlah),
             tanggal: item.tanggal,
-            penerima: item.penerima,
-            created_by: get().currentUser?.nama || 'Unknown',
+            penerima: item.penerima
         };
         const { data, error } = await supabase.from('log_transaksi').insert([payload]).select();
         if (error) { alert('Gagal catat masuk: ' + error.message); return; }
 
         if (data) {
-            // BUG FIX: Jika di Supabase sudah ada Database Trigger yang mengupdate stok
-            // saat tabel log_transaksi ditambah, memanggil RPC ini akan menyebabkan stok terhitung ganda (double-count).
-            // Maka pemanggilan manual RPC ini dinonaktifkan.
-            /*
-            const { error: rpcError } = await supabase.rpc('adjust_stok', {
-                p_kode_barang: item.kode_barang,
-                p_delta: payload.jumlah
-            });
-            if (rpcError) console.error('Gagal update stok:', rpcError);
-            */
+            // Update stok manual
+            await adjustStokManual(item.kode_barang, payload.jumlah);
+            
             get().fetchData();
         }
     },
 
     updateLogTransaksi: async (id, oldItem, newItem) => {
-        /*
-        // Dinonaktifkan karena DB trigger sudah menghandle ini saat log diupdate
-        const revertDelta = oldItem.jenis_transaksi === 'Masuk'
-            ? -oldItem.jumlah
-            : oldItem.jumlah;
-        const { error: revertError } = await supabase.rpc('adjust_stok', {
-            p_kode_barang: oldItem.kode_barang,
-            p_delta: revertDelta
-        });
-        if (revertError) console.error('Gagal revert stok:', revertError);
+        // Revert stok lama manual
+        const revertDelta = oldItem.jenis_transaksi === 'Masuk' ? -oldItem.jumlah : oldItem.jumlah;
+        await adjustStokManual(oldItem.kode_barang, revertDelta);
 
-        // 2. Apply efek stok baru
+        // Apply stok baru manual
         const newQty = parseInt(newItem.jumlah);
         const applyDelta = oldItem.jenis_transaksi === 'Masuk' ? newQty : -newQty;
-        const { error: applyError } = await supabase.rpc('adjust_stok', {
-            p_kode_barang: newItem.kode_barang,
-            p_delta: applyDelta
-        });
-        if (applyError) console.error('Gagal apply stok baru:', applyError);
-        */
+        await adjustStokManual(newItem.kode_barang, applyDelta);
 
         // 3. Update log
         const payload = {
@@ -67,15 +54,9 @@ const createMasukSlice = (set, get) => ({
     },
 
     deleteLogTransaksi: async (id, item) => {
-        /*
-        // Revert efek stok (ditangani oleh DB trigger saat log dihapus)
+        // Revert efek stok manual
         const revertDelta = item.jenis_transaksi === 'Masuk' ? -item.jumlah : item.jumlah;
-        const { error: revertError } = await supabase.rpc('adjust_stok', {
-            p_kode_barang: item.kode_barang,
-            p_delta: revertDelta
-        });
-        if (revertError) console.error('Gagal revert stok:', revertError);
-        */
+        await adjustStokManual(item.kode_barang, revertDelta);
 
         // Delete log
         const { error } = await supabase.from('log_transaksi').delete().eq('id', id);

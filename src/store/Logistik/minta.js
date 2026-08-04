@@ -53,8 +53,6 @@ const createMintaSlice = (set, get) => ({
         const { error } = await supabase.from('permintaan')
             .update({
                 status_persetujuan: status,
-                processed_by: currentUser?.nama || currentUser?.name || 'Admin',
-                processed_at: new Date().toISOString(),
             })
             .eq('id', id);
 
@@ -70,18 +68,24 @@ const createMintaSlice = (set, get) => ({
                 jenis_transaksi: 'Keluar',
                 jumlah: parseInt(item.jumlah, 10),
                 tanggal: new Date().toISOString().split('T')[0],
-                penerima: `Permintaan: ${item.nama_pemohon}`,
-                created_by: currentUser?.nama || currentUser?.name || 'Admin',
+                penerima: `Permintaan: ${item.nama_pemohon}`
             };
             const { error: txError } = await supabase.from('log_transaksi').insert([keluarPayload]);
-            if (!txError) {
-                /*
-                // Dinonaktifkan karena sudah di-handle oleh Database Trigger pada insert log_transaksi
-                await supabase.rpc('adjust_stok', {
-                    p_kode_barang: item.kode_barang,
-                    p_delta: -parseInt(item.jumlah, 10)
-                });
-                */
+            if (txError) {
+                alert('Gagal membuat log transaksi: ' + txError.message);
+            } else {
+                // Kita potong stok secara manual (karena tidak ada trigger DB otomatis)
+                const { data: bData, error: bReadError } = await supabase.from('barang').select('stok_saat_ini').eq('kode_barang', item.kode_barang).single();
+                if (bReadError) {
+                    alert('Gagal membaca stok barang: ' + bReadError.message);
+                }
+                
+                if (bData) {
+                    const { error: bUpdateError } = await supabase.from('barang').update({ stok_saat_ini: bData.stok_saat_ini - parseInt(item.jumlah, 10) }).eq('kode_barang', item.kode_barang);
+                    if (bUpdateError) {
+                        alert('Gagal update stok barang: ' + bUpdateError.message);
+                    }
+                }
             }
         }
 
@@ -100,14 +104,11 @@ const createMintaSlice = (set, get) => ({
             );
 
             if (matchingTx) {
-                /*
-                // Revert efek stok (tambah kembali) - dinonaktifkan karena sudah ditangani DB trigger saat hapus log
-                const { error: revertError } = await supabase.rpc('adjust_stok', {
-                    p_kode_barang: item.kode_barang,
-                    p_delta: item.jumlah
-                });
-                if (revertError) console.error('Gagal mengembalikan stok:', revertError);
-                */
+                // Kita panggil manual update untuk mengembalikan stok
+                const { data: bData } = await supabase.from('barang').select('stok_saat_ini').eq('kode_barang', item.kode_barang).single();
+                if (bData) {
+                    await supabase.from('barang').update({ stok_saat_ini: bData.stok_saat_ini + parseInt(item.jumlah, 10) }).eq('kode_barang', item.kode_barang);
+                }
 
                 // Hapus log transaksi terkait
                 const { error: txError } = await supabase.from('log_transaksi')
