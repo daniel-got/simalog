@@ -68,16 +68,15 @@ const createMintaSlice = (set, get) => ({
                 jenis_transaksi: 'Keluar',
                 jumlah: parseInt(item.jumlah, 10),
                 tanggal: new Date().toISOString().split('T')[0],
-                penerima: `Permintaan: ${item.nama_pemohon}`,
-                created_by: currentUser?.nama || currentUser?.name || 'Admin',
+                penerima: `Permintaan: ${item.nama_pemohon}`
             };
             const { error: txError } = await supabase.from('log_transaksi').insert([keluarPayload]);
             if (!txError) {
-                // Kita panggil manual RPC untuk memotong stok (karena tidak ada trigger DB otomatis)
-                await supabase.rpc('adjust_stok', {
-                    p_kode_barang: item.kode_barang,
-                    p_delta: -parseInt(item.jumlah, 10)
-                });
+                // Kita potong stok secara manual (karena tidak ada trigger DB otomatis)
+                const { data: bData } = await supabase.from('barang').select('stok_saat_ini').eq('kode_barang', item.kode_barang).single();
+                if (bData) {
+                    await supabase.from('barang').update({ stok_saat_ini: bData.stok_saat_ini - parseInt(item.jumlah, 10) }).eq('kode_barang', item.kode_barang);
+                }
             }
         }
 
@@ -96,12 +95,11 @@ const createMintaSlice = (set, get) => ({
             );
 
             if (matchingTx) {
-                // Kita panggil manual RPC untuk mengembalikan stok
-                const { error: revertError } = await supabase.rpc('adjust_stok', {
-                    p_kode_barang: item.kode_barang,
-                    p_delta: parseInt(item.jumlah, 10)
-                });
-                if (revertError) console.error('Gagal mengembalikan stok:', revertError);
+                // Kita panggil manual update untuk mengembalikan stok
+                const { data: bData } = await supabase.from('barang').select('stok_saat_ini').eq('kode_barang', item.kode_barang).single();
+                if (bData) {
+                    await supabase.from('barang').update({ stok_saat_ini: bData.stok_saat_ini + parseInt(item.jumlah, 10) }).eq('kode_barang', item.kode_barang);
+                }
 
                 // Hapus log transaksi terkait
                 const { error: txError } = await supabase.from('log_transaksi')

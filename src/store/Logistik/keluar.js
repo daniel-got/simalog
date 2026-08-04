@@ -9,21 +9,17 @@ const createKeluarSlice = (set, get) => ({
             jenis_transaksi: 'Keluar',
             jumlah: parseInt(item.jumlah),
             tanggal: item.tanggal,
-            penerima: item.penerima,
-            created_by: get().currentUser?.nama || 'Unknown',
+            penerima: item.penerima
         };
         const { data, error } = await supabase.from('log_transaksi').insert([payload]).select();
         if (error) { alert('Gagal catat keluar: ' + error.message); return; }
 
         if (data) {
-            /*
-            // Dinonaktifkan untuk mencegah perhitungan ganda karena ada DB Trigger di Supabase
-            const { error: rpcError } = await supabase.rpc('adjust_stok', {
-                p_kode_barang: item.kode_barang,
-                p_delta: -payload.jumlah
-            });
-            if (rpcError) console.error('Gagal update stok:', rpcError);
-            */
+            // Kita update stok manual karena tidak ada RPC/Trigger DB
+            const { data: bData } = await supabase.from('barang').select('stok_saat_ini').eq('kode_barang', item.kode_barang).single();
+            if (bData) {
+                await supabase.from('barang').update({ stok_saat_ini: bData.stok_saat_ini - parseInt(payload.jumlah) }).eq('kode_barang', item.kode_barang);
+            }
             get().fetchData();
         }
     },
