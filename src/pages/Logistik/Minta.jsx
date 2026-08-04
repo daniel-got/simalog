@@ -417,9 +417,9 @@ export default function Minta() {
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="px-18 py-8 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-sm active:scale-95 transition-all select-none"
+                className="px-18 py-8 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-sm active:scale-95 transition-all flex items-center justify-center select-none"
               >
-                Ya, Hapus
+                <Trash2 size={14} className="mr-2" /> Ya, Hapus
               </button>
             </div>
           </div>

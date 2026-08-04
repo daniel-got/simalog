@@ -131,20 +131,20 @@ export default function PermintaanCard({
 
         {/* Admin Approval Controls (Setujui / Tolak) */}
         {isAdmin && onUpdateStatus && (status === 'Diajukan' || status === 'Pending') && (
-          <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 mt-2.5">
+          <div className="flex items-center gap-4 pt-2.5 border-t border-slate-100 mt-2.5">
             <button
               type="button"
               onClick={() => onUpdateStatus(item.id, 'Disetujui')}
-              className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+              className="flex-1 py-1.5 px-3 bg-teal-50 text-teal-600 hover:bg-teal-100 rounded-lg text-[11px] font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <CheckCircle2 size={12} /> Setujui
+              <span>Setujui</span>
             </button>
             <button
               type="button"
               onClick={() => onUpdateStatus(item.id, 'Ditolak')}
-              className="flex-1 py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+              className="flex-1 py-1.5 px-3 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[11px] font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <XCircle size={12} /> Tolak
+              <span>Tolak</span>
             </button>
           </div>
         )}
