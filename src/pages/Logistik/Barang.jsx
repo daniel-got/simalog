@@ -164,7 +164,7 @@ export default function Barang() {
   return (
     <div className="space-y-21">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Data Barang</h1>
           <p className="text-xs text-slate-400 mt-2">{filtered.length} item terdaftar</p>
@@ -210,7 +210,7 @@ export default function Barang() {
             {editKode ? '✏️ Edit Data Barang' : '📦 Tambah Barang Baru'}
           </p>
           <form onSubmit={handleSubmit} className="space-y-13">
-            <div className="grid grid-cols-2 gap-13">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
               <Input
                 label="Nama Barang" required
                 value={form.nama_barang}
@@ -224,7 +224,7 @@ export default function Barang() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-13">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
               <Select
                 label="Kelompok Barang" required
                 options={Object.keys(KELOMPOK_BARANG).map(k => ({ label: k, value: k }))}
@@ -240,7 +240,7 @@ export default function Barang() {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-13">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-13">
               <Input
                 label="Satuan" required placeholder="pcs / rim / box"
                 value={form.satuan_barang}
@@ -322,7 +322,7 @@ export default function Barang() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <select
             className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
             value={filterKelompok}

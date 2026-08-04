@@ -257,7 +257,7 @@ export default function Aktivitas() {
   return (
     <div className="space-y-21">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Aktivitas &amp; Log Aset</h1>
           <p className="text-xs text-slate-400 mt-2">{filtered.length} riwayat aktivitas tercatat</p>
@@ -405,7 +405,7 @@ export default function Aktivitas() {
             className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
         </div>
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <select
             className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
             value={filterJenis}
@@ -469,29 +469,29 @@ export default function Aktivitas() {
                   </td>
                   <td className="px-13 py-13 text-xs text-slate-500 max-w-[180px] truncate">{getCleanKeterangan(a.keterangan)}</td>
                   <td className="px-13 py-13">
-                    <div className="flex items-center gap-8">
-                      {/* Action Buttons */}
-                      {status === 'Pending' && (
-                        <div className="flex gap-5">
-                          <button onClick={() => handleUpdateStatus(a, 'Setujui')} className="text-[10px] font-bold px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">✓ Setujui</button>
-                          <button onClick={() => handleUpdateStatus(a, 'Tolak')} className="text-[10px] font-bold px-5 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors">✕ Tolak</button>
-                        </div>
-                      )}
-                      {status === 'Disetujui' && (
-                        <button onClick={() => handleUpdateStatus(a, 'Kembalikan')} className="text-[10px] font-bold px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">Selesaikan / Kembalikan</button>
-                      )}
+                      <div className="flex items-center gap-5">
+                        {/* Action Buttons */}
+                        {status === 'Pending' && (
+                          <>
+                            <button onClick={() => handleUpdateStatus(a, 'Setujui')} className="text-emerald-600 p-5 hover:bg-emerald-50 rounded-lg text-xs font-bold">✓ Setujui</button>
+                            <button onClick={() => handleUpdateStatus(a, 'Tolak')} className="text-red-600 p-5 hover:bg-red-50 rounded-lg text-xs font-bold">✕ Tolak</button>
+                          </>
+                        )}
+                        {status === 'Disetujui' && (
+                          <button onClick={() => handleUpdateStatus(a, 'Kembalikan')} className="text-blue-600 p-5 hover:bg-blue-50 rounded-lg text-xs font-bold">Selesaikan / Kembalikan</button>
+                        )}
 
-                      <div className="flex gap-5 items-center ml-auto shrink-0">
-                        <button onClick={() => handleEdit(a)}
-                          className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors" title="Edit">
-                          <Pencil size={12} />
-                        </button>
-                        <button onClick={() => handleDelete(a)}
-                          className="w-21 h-21 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors" title="Hapus">
-                          <Trash2 size={12} />
-                        </button>
+                        <div className="flex gap-5 items-center ml-auto shrink-0">
+                          <button onClick={() => handleEdit(a)}
+                            className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors" title="Edit">
+                            <Pencil size={12} strokeWidth={2.5} />
+                          </button>
+                          <button onClick={() => handleDelete(a)}
+                            className="w-21 h-21 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors" title="Hapus">
+                            <Trash2 size={12} strokeWidth={2.5} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
                   </td>
                 </tr>
               );

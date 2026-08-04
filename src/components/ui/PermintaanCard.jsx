@@ -111,7 +111,7 @@ export default function PermintaanCard({
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                className="p-1.5 text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors"
                 title="Edit Permintaan"
               >
                 <Pencil size={14} strokeWidth={2} />
@@ -120,7 +120,7 @@ export default function PermintaanCard({
             {onDelete && (
               <button
                 onClick={onDelete}
-                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors"
                 title="Hapus Permintaan"
               >
                 <Trash2 size={14} strokeWidth={2} />

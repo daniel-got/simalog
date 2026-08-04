@@ -149,7 +149,7 @@ export default function Minta() {
   return (
     <div className="space-y-21">
       {/* ── Page Header (Identik dengan Barang, Masuk, Keluar) ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Permintaan Barang</h1>
           <p className="text-xs text-slate-400 mt-2">{filtered.length} transaksi permintaan</p>
@@ -197,7 +197,7 @@ export default function Minta() {
               value={form.kode_barang}
               onChange={e => setForm({ ...form, kode_barang: e.target.value })}
             />
-            <div className="grid grid-cols-2 gap-13">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
               <Input label="Jumlah" type="number" required min="1"
                 value={form.jumlah}
                 onChange={e => setForm({ ...form, jumlah: Number(e.target.value) })} />
@@ -240,7 +240,7 @@ export default function Minta() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <select
             className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
             value={filterKelompok}
@@ -355,10 +355,10 @@ export default function Minta() {
                             </button>
                           </>
                         )}
-                        <button onClick={() => handleEdit(m)} className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Edit">
+                        <button onClick={() => handleEdit(m)} className="p-1.5 text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors" title="Edit">
                           <Pencil size={14} />
                         </button>
-                        <button onClick={() => handleDelete(m)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
+                        <button onClick={() => handleDelete(m)} className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors" title="Hapus">
                           <Trash2 size={14} />
                         </button>
                       </div>

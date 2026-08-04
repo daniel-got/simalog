@@ -242,7 +242,7 @@ export default function Perawatan() {
   return (
     <div className="space-y-21">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Perawatan &amp; Biaya Aset</h1>
           <p className="text-xs text-slate-400 mt-2">
@@ -286,7 +286,7 @@ export default function Perawatan() {
             {/* Kartu Informasi Servis Berbasis Kilometer (KM) ketika kendaraan/aset KM dipilih */}
             {selectedAset && selectedMaintenanceType === 'km' && (
               <div className="bg-teal-50/80 border border-teal-200/90 rounded-2xl p-13 space-y-13 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
                   <p className="text-xs font-bold text-teal-800 flex items-center gap-2">
                     <Gauge size={16} className="text-teal-600" /> Servis Berbasis Kilometer (KM)
                   </p>
@@ -392,7 +392,7 @@ export default function Perawatan() {
             className="w-full pl-11 pr-4 py-2.5 h-11 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
         </div>
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <select
             className="w-full px-4 py-2.5 h-11 text-sm font-medium bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-700"
             value={filterKategori}
@@ -465,14 +465,14 @@ export default function Perawatan() {
                         className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors"
                         title="Edit"
                       >
-                        <Pencil size={12} />
+                        <Pencil size={12} strokeWidth={2.5} />
                       </button>
                       <button
                         onClick={() => handleDelete(p)}
-                        className="w-21 h-21 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                        className="w-21 h-21 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors"
                         title="Hapus"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={12} strokeWidth={2.5} />
                       </button>
                     </div>
                   </td>

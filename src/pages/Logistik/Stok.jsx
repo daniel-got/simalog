@@ -112,7 +112,7 @@ export default function Stok() {
               {/* Jenis toggle */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-8">Jenis Penyesuaian</p>
-                <div className="grid grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {['masuk', 'keluar'].map(j => (
                     <button key={j} type="button"
                       onClick={() => setJenis(j)}
@@ -174,7 +174,7 @@ export default function Stok() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <select
                   className="w-full px-8 py-8 text-[10px] bg-slate-50 border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
                   value={filterKelompok}

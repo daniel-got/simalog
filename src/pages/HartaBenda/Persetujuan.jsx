@@ -420,7 +420,7 @@ export default function Persetujuan() {
     <div className="space-y-8">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-4">
             Persetujuan
@@ -499,17 +499,16 @@ export default function Persetujuan() {
                         <button
                           onClick={() => confirmSetujuiPeminjaman(item)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-5 px-8 py-5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                          className="flex items-center gap-5 bg-emerald-600 text-white px-8 py-5 hover:bg-emerald-700 rounded-lg text-[10px] font-bold disabled:opacity-50 transition-colors"
                         >
-                          {actionLoading === item.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
-                          Setujui
+                          {actionLoading === item.id ? <Loader2 size={12} className="animate-spin" /> : '✓'} Setujui
                         </button>
                         <button
                           onClick={() => confirmTolakPeminjaman(item)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-5 px-8 py-5 border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                          className="flex items-center gap-5 bg-rose-600 text-white px-8 py-5 hover:bg-rose-700 rounded-lg text-[10px] font-bold disabled:opacity-50 transition-colors"
                         >
-                          <XCircle size={10} /> Tolak
+                          ✕ Tolak
                         </button>
                       </div>
                     </td>
@@ -564,17 +563,16 @@ export default function Persetujuan() {
                         <button
                           onClick={() => confirmVerifikasiKerusakan(item)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-5 px-8 py-5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                          className="flex items-center gap-5 bg-emerald-600 text-white px-8 py-5 hover:bg-emerald-700 rounded-lg text-[10px] font-bold disabled:opacity-50 transition-colors"
                         >
-                          {actionLoading === item.id ? <Loader2 size={10} className="animate-spin" /> : <ShieldCheck size={10} />}
-                          Verifikasi
+                          {actionLoading === item.id ? <Loader2 size={12} className="animate-spin" /> : '✓'} Verifikasi
                         </button>
                         <button
                           onClick={() => confirmTolakKerusakan(item)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-5 px-8 py-5 border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                          className="flex items-center gap-5 bg-rose-600 text-white px-8 py-5 hover:bg-rose-700 rounded-lg text-[10px] font-bold disabled:opacity-50 transition-colors"
                         >
-                          <XCircle size={10} /> Tolak
+                          ✕ Tolak
                         </button>
                       </div>
                     </td>

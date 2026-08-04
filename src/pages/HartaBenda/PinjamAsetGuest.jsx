@@ -9,8 +9,9 @@ import SearchableSelect from '../../components/ui/SearchableSelect';
 import Pagination from '../../components/ui/Pagination';
 import {
   Plus, Search, Calendar, User, Trash2, Building2,
-  Clock, ClipboardList, X, Loader2
+  Clock, ClipboardList, X, Loader2, Pencil
 } from 'lucide-react';
+import { useToast } from '../../components/ui/Toast';
 
 const makeEmptyForm = (namaUser) => ({
   id_aset: '',
@@ -51,6 +52,7 @@ const statusLabel = (status) => {
 export default function PinjamAsetGuest() {
   const { currentUser } = useLogistikStore();
   const { aset, logAktivitas } = useHartaBendaStore();
+  const toast = useToast();
 
   const [open, setOpen]     = useState(false);
   const [form, setForm]     = useState(() => makeEmptyForm(currentUser?.nama));
@@ -59,6 +61,11 @@ export default function PinjamAsetGuest() {
   // Data pengajuan dari tabel peminjaman_aset
   const [daftarPinjam, setDaftarPinjam] = useState([]);
   const [loadingList, setLoadingList]   = useState(true);
+
+  // Form & Cancel States
+  const [editId, setEditId] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // Filter States
   const [filterText, setFilterText]           = useState('');
@@ -194,7 +201,14 @@ export default function PinjamAsetGuest() {
       status:          'pending',
     };
 
-    const { error } = await supabase.from('peminjaman_aset').insert([payload]);
+    let error;
+    if (editId) {
+      const { error: err } = await supabase.from('peminjaman_aset').update(payload).eq('id', editId);
+      error = err;
+    } else {
+      const { error: err } = await supabase.from('peminjaman_aset').insert([payload]);
+      error = err;
+    }
     setLoading(false);
 
     if (error) {
@@ -202,21 +216,39 @@ export default function PinjamAsetGuest() {
       return;
     }
 
+    toast.success(editId ? 'Pengajuan peminjaman berhasil diperbarui!' : 'Pengajuan peminjaman berhasil dikirim!');
+
     setForm(makeEmptyForm(currentUser?.nama));
+    setEditId(null);
     setOpen(false);
     // Re-fetch untuk tampilkan data baru (Realtime akan trigger juga)
     fetchDaftarPinjam();
   };
 
+  const handleEdit = (loan) => {
+    setEditId(loan.id);
+    setForm({
+      id_aset: loan.id_aset,
+      nama_staf: loan.nama_peminjam,
+      tanggal: loan.tanggal_pinjam,
+      tanggal_rencana_kembali: loan.tanggal_kembali,
+      keperluan: loan.keperluan
+    });
+    setOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // ── Batalkan pengajuan (hanya saat status pending) ───────────────────────
-  const handleCancel = async (id) => {
-    if (!window.confirm('Yakin ingin membatalkan pengajuan peminjaman ini?')) return;
-    const { error } = await supabase.from('peminjaman_aset').delete().eq('id', id);
+  const handleConfirmCancel = async () => {
+    if (!itemToDelete) return;
+    const { error } = await supabase.from('peminjaman_aset').delete().eq('id', itemToDelete.id);
     if (error) {
       alert('Gagal membatalkan: ' + error.message);
       return;
     }
-    setDaftarPinjam(prev => prev.filter(p => p.id !== id));
+    setDaftarPinjam(prev => prev.filter(p => p.id !== itemToDelete.id));
+    setIsDeleteModalOpen(false);
+    setItemToDelete(null);
   };
 
   // ── Filter & Search ──────────────────────────────────────────────────────
@@ -249,18 +281,20 @@ export default function PinjamAsetGuest() {
   return (
     <div className="space-y-21">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Peminjaman Aset</h1>
           <p className="text-xs text-slate-400 mt-1">{filteredLoans.length} pengajuan peminjaman</p>
         </div>
         <Button
           size="sm"
-          onClick={() => setOpen(!open)}
-          className="bg-teal-600 hover:bg-teal-700 text-white font-bold"
+          onClick={() => {
+            setEditId(null);
+            setForm(makeEmptyForm(currentUser?.nama));
+            setOpen(true);
+          }}
         >
-          {open ? <X size={15} /> : <Plus size={15} />}
-          <span className="ml-1">{open ? 'Tutup Form' : 'Kirim Pengajuan'}</span>
+          <Plus size={15} /> Kirim Pengajuan
         </Button>
       </div>
 
@@ -268,7 +302,7 @@ export default function PinjamAsetGuest() {
       {open && (
         <Card className="border-teal-200 bg-teal-50/40 p-21">
           <p className="text-base font-bold text-slate-700 mb-13">
-            📋&nbsp; Pengajuan Pinjam Aset Baru
+            {editId ? '✏️ Edit Pengajuan Peminjaman' : '📋 Pengajuan Pinjam Aset Baru'}
           </p>
           <form onSubmit={handleSubmit} className="space-y-13">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
@@ -321,14 +355,13 @@ export default function PinjamAsetGuest() {
             </div>
 
             <div className="flex justify-end gap-8 pt-5">
-              <Button type="button" variant="ghost" size="sm" onClick={() => { setForm(makeEmptyForm(currentUser?.nama)); setOpen(false); }}>
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setForm(makeEmptyForm(currentUser?.nama)); setEditId(null); setOpen(false); }}>
                 Batal
               </Button>
               <Button
                 type="submit"
                 disabled={loading || asetOptions.length === 0}
                 size="sm"
-                className="bg-teal-600 hover:bg-teal-700 text-white"
               >
                 {loading ? <><Loader2 size={13} className="animate-spin mr-1" /> Mengirim...</> : 'Simpan'}
               </Button>
@@ -415,7 +448,7 @@ export default function PinjamAsetGuest() {
         </div>
       ) : (
         <div className="space-y-21">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-13 lg:gap-21 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-13 lg:gap-21 w-full items-start">
             {pagedLoans.map(loan => {
               const asetDetail = loan.aset || getAssetDetails(loan.id_aset);
               const status     = loan.status || 'pending';
@@ -423,10 +456,10 @@ export default function PinjamAsetGuest() {
               return (
                 <div
                   key={loan.id}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden group"
+                  className="bg-white p-13 lg:p-0 rounded-2xl border border-slate-100 shadow-sm flex flex-row lg:flex-col gap-13 lg:gap-0 items-center lg:items-stretch overflow-hidden group hover:shadow-md transition-shadow"
                 >
-                  {/* Gambar Aset */}
-                  <div className="w-full h-40 rounded-t-2xl overflow-hidden bg-slate-100 flex items-center justify-center relative flex-shrink-0">
+                  {/* Container Gambar */}
+                  <div className="w-89 h-89 lg:w-full lg:h-48 bg-slate-50 rounded-xl lg:rounded-none lg:border-0 lg:border-b border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
                     {asetDetail?.foto_url || asetDetail?.image_url ? (
                       <img
                         src={asetDetail.foto_url || asetDetail.image_url}
@@ -434,71 +467,77 @@ export default function PinjamAsetGuest() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
-                      <Building2 size={34} className="text-slate-300" />
+                      <Building2 size={21} className="text-slate-300" />
                     )}
-                    <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-slate-500 font-bold text-[9px] px-2 py-1 rounded-md border border-slate-100 uppercase tracking-wider">
-                      {asetDetail?.kategori_aset || 'Umum'}
-                    </span>
                   </div>
 
                   {/* Body */}
-                  <div className="flex flex-col flex-1 p-4">
-                    {/* Nama & Kode */}
-                    <div className="mb-3">
-                      <h3 className="text-sm font-bold text-slate-800 leading-tight truncate">
+                  <div className="flex-1 min-w-0 flex flex-col py-2 lg:p-13">
+                    <div className="flex flex-col">
+                      {/* Header Mobile: Kategori & Status */}
+                      <div className="flex justify-between items-start gap-5 lg:hidden mb-2">
+                        <span className="text-[9px] font-mono bg-slate-50 text-slate-500 px-5 py-2 rounded-md font-bold uppercase tracking-wider truncate">
+                          {asetDetail?.kategori_aset || 'Umum'}
+                        </span>
+                        <span className={`text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider shrink-0 ${statusBadge(status)}`}>
+                          {statusLabel(status)}
+                        </span>
+                      </div>
+
+                      {/* Name */}
+                      <h3 className="text-sm font-bold text-slate-800 leading-tight truncate mb-2">
                         {asetDetail?.nama_aset || 'Aset Tidak Dikenal'}
                       </h3>
-                      <p className="text-[10px] font-mono text-slate-400 mt-1">
-                        {asetDetail?.kode_aset || asetDetail?.id || loan.id_aset}
+
+                      {/* Keperluan & Kode Aset */}
+                      <p className="text-[10px] font-medium text-slate-500 truncate mt-2 lg:mt-0">
+                        <span className="font-semibold text-slate-400">Keperluan:</span> <span className="text-slate-600 ml-1">{loan.keperluan || '—'}</span>
                       </p>
+
+                      <h4 className="hidden lg:block text-[10px] font-mono text-slate-400 truncate mt-2">
+                        {asetDetail?.kode_aset || asetDetail?.id || loan.id_aset}
+                      </h4>
                     </div>
 
-                    {/* Info detail */}
-                    <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 text-sm text-slate-600 mb-3">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-semibold text-slate-400">Keperluan</span>
-                        <span className="text-xs text-slate-600 text-right max-w-[60%] line-clamp-2">{loan.keperluan || '—'}</span>
+                    {/* Footer Detail */}
+                    <div className="flex justify-between items-end lg:items-end mt-4 pt-4 border-t border-slate-50">
+                      <div className="flex flex-col">
+                        <span className="hidden lg:block text-[10px] font-semibold text-slate-500 mb-3">
+                          Status: <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider ${statusBadge(status)}`}>{statusLabel(status)}</span>
+                        </span>
+                        <span className="text-[9px] font-bold text-teal-700 leading-none">
+                          {loan.tanggal_pinjam || '—'}
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-medium mt-1">
+                          s.d {loan.tanggal_kembali || '—'}
+                        </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-xs font-semibold text-slate-400">Tgl Pinjam</span>
-                        <span className="text-xs text-slate-600">{loan.tanggal_pinjam || '—'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-xs font-semibold text-slate-400">Tgl Kembali</span>
-                        <span className="text-xs text-slate-600">{loan.tanggal_kembali || '—'}</span>
-                      </div>
-                      {/* Tampilkan catatan admin jika ada */}
-                      {loan.catatan_admin && (
-                        <div className="flex flex-col gap-1 pt-1 border-t border-slate-200">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase">Catatan Admin</span>
-                          <span className="text-xs text-slate-600 italic">{loan.catatan_admin}</span>
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Badge Status */}
-                    <div className="mb-2">
-                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider inline-block ${statusBadge(status)}`}>
-                        {statusLabel(status)}
-                      </span>
-                    </div>
-
-                    {/* Footer divider */}
-                    <div className="border-t border-slate-100 pt-3 mt-auto flex items-center justify-between text-xs text-slate-400">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <User size={12} className="shrink-0" />
-                        <span className="truncate font-semibold">{loan.nama_peminjam}</span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] font-semibold text-slate-600 max-w-[100px] truncate">{loan.nama_peminjam}</span>
+                        {loan.catatan_admin ? (
+                          <span className="text-[9px] font-medium text-slate-400 max-w-[100px] truncate italic" title={loan.catatan_admin}>
+                            Admin: {loan.catatan_admin}
+                          </span>
+                        ) : status === 'pending' ? (
+                          <div className="flex gap-2 mt-1">
+                            <button
+                              onClick={() => handleEdit(loan)}
+                              className="p-1.5 text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors"
+                              title="Edit Pengajuan"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => { setItemToDelete(loan); setIsDeleteModalOpen(true); }}
+                              className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors"
+                              title="Batalkan Pengajuan"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
-                      {status === 'pending' && (
-                        <button
-                          onClick={() => handleCancel(loan.id)}
-                          className="flex items-center gap-1 text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-lg transition-all shrink-0 ml-2"
-                          title="Batalkan Pengajuan"
-                        >
-                          <Trash2 size={10} />
-                          BATALKAN
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -514,6 +553,46 @@ export default function PinjamAsetGuest() {
             onPageChange={setCurrentPage}
             onPerPageChange={setPerPage}
           />
+        </div>
+      )}
+
+      {/* ── CUSTOM MODAL KONFIRMASI BATAL ── */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => {
+              setIsDeleteModalOpen(false);
+              setItemToDelete(null);
+            }}
+          />
+          <div className="relative bg-white rounded-3xl shadow-xl border border-slate-100 w-full max-w-md p-21 flex flex-col gap-13 z-10 animate-in fade-in zoom-in-95 duration-150 text-center items-center">
+            <div className="mt-8">
+              <h3 className="text-lg font-black text-slate-800 tracking-tight mb-8">Batalkan Pengajuan</h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
+                Yakin ingin membatalkan pengajuan pinjam <span className="font-bold text-slate-700">"{itemToDelete?.aset?.nama_aset || 'Aset'}"</span>? Tindakan ini tidak dapat diurungkan.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-8 mt-13 w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setItemToDelete(null);
+                }}
+                className="px-18 py-8 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 active:scale-95 transition-all select-none"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancel}
+                className="px-18 py-8 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-sm active:scale-95 transition-all select-none"
+              >
+                Ya, Batalkan
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
