@@ -1,0 +1,1 @@
+INSERT INTO "public"."kelompok_aset" ("id", "nama", "prefix_kode") VALUES (1, 'Kendaraan Dinas', 'KND'), (2, 'Elektronik & IT', 'ELK'), (3, 'Elektronik Rumah Tangga', 'ERT'), (4, 'Furnitur', 'FUR'), (5, 'Sarana Pendukung', 'SRN'), (25, 'lainnya', 'LN'), (26, 'Tanah', 'TNH-0'), (27, 'Bangunan/Gedung', 'BGN-0');
