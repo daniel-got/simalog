@@ -53,8 +53,6 @@ const createMintaSlice = (set, get) => ({
         const { error } = await supabase.from('permintaan')
             .update({
                 status_persetujuan: status,
-                processed_by: currentUser?.nama || currentUser?.name || 'Admin',
-                processed_at: new Date().toISOString(),
             })
             .eq('id', id);
 
