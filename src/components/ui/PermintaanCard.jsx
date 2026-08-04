@@ -96,13 +96,11 @@ export default function PermintaanCard({
       <div className="mt-auto">
         <div className="flex items-end justify-between">
           <div className="flex flex-col">
-            <span className="text-[11px] font-medium text-slate-600 flex items-center gap-1 truncate max-w-[120px]" title={item.nama_pemohon || 'Guest'}>
-              <User size={12} className="text-slate-400 shrink-0" />
-              <span className="truncate">{item.nama_pemohon || 'Guest'}</span>
+            <span className="text-[11px] font-medium text-slate-600 truncate max-w-[120px]" title={item.nama_pemohon || 'Guest'}>
+              {item.nama_pemohon || 'Guest'}
             </span>
-            <span className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-              <Calendar size={10} className="text-slate-300" />
-              <span>{item.tanggal_minta}</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">
+              {item.tanggal_minta}
             </span>
           </div>
 
