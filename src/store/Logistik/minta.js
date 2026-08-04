@@ -73,13 +73,11 @@ const createMintaSlice = (set, get) => ({
             };
             const { error: txError } = await supabase.from('log_transaksi').insert([keluarPayload]);
             if (!txError) {
-                /*
-                // Dinonaktifkan karena sudah di-handle oleh Database Trigger pada insert log_transaksi
+                // Kita panggil manual RPC untuk memotong stok (karena tidak ada trigger DB otomatis)
                 await supabase.rpc('adjust_stok', {
                     p_kode_barang: item.kode_barang,
                     p_delta: -parseInt(item.jumlah, 10)
                 });
-                */
             }
         }
 
@@ -98,14 +96,12 @@ const createMintaSlice = (set, get) => ({
             );
 
             if (matchingTx) {
-                /*
-                // Revert efek stok (tambah kembali) - dinonaktifkan karena sudah ditangani DB trigger saat hapus log
+                // Kita panggil manual RPC untuk mengembalikan stok
                 const { error: revertError } = await supabase.rpc('adjust_stok', {
                     p_kode_barang: item.kode_barang,
-                    p_delta: item.jumlah
+                    p_delta: parseInt(item.jumlah, 10)
                 });
                 if (revertError) console.error('Gagal mengembalikan stok:', revertError);
-                */
 
                 // Hapus log transaksi terkait
                 const { error: txError } = await supabase.from('log_transaksi')
