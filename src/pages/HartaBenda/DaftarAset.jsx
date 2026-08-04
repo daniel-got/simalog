@@ -19,15 +19,16 @@ import {
   FileText,
 } from "lucide-react";
 
-import Button from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
-import { Table } from "../../components/ui/Table";
-import Pagination from "../../components/ui/Pagination";
-import { Input, Select } from "../../components/ui/Input";
-import ModalKategoriAset from "./ModalKategoriAset";
-import { cn } from "../../utils/cn";
-import useHartaBendaStore from "../../store/HartaBenda/useHartaBendaStore";
-import { supabase } from "../../lib/supabase";
+import Button from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Table } from '../../components/ui/Table';
+import Pagination from '../../components/ui/Pagination';
+import { Input, Select } from '../../components/ui/Input';
+import SearchableSelect from '../../components/ui/SearchableSelect';
+import ModalKategoriAset from './ModalKategoriAset';
+import { cn } from '../../utils/cn';
+import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
+import { supabase } from '../../lib/supabase';
 
 const KONDISI_OPTIONS = [
   { value: "Baik", label: "Baik" },
@@ -372,7 +373,7 @@ export default function DaftarAset() {
   return (
     <div className="space-y-21">
       {/* ── Header Halaman ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">
             Master Harta &amp; Aset
@@ -413,13 +414,9 @@ export default function DaftarAset() {
               <Button
                 size="sm"
                 onClick={() => {
-                  if (showForm && !editId) {
-                    setShowForm(false);
-                  } else {
-                    setEditId(null);
-                    setForm(initialFormState);
-                    setShowForm(true);
-                  }
+                  setEditId(null);
+                  setForm(initialFormState);
+                  setShowForm(true);
                 }}
               >
                 <Plus size={15} /> Tambah
@@ -447,7 +444,7 @@ export default function DaftarAset() {
 
           <form onSubmit={handleSubmit} className="space-y-13">
             {/* ── Baris 1: Kode & Nama ── */}
-            <div className="grid grid-cols-2 gap-13">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
               {/* Kode Aset — dapat diisi manual atau di-generate otomatis */}
               <Input
                 label="Kode Aset / Inventaris"
@@ -476,8 +473,8 @@ export default function DaftarAset() {
             </div>
 
             {/* ── Baris 2: Kelompok & Sub-Kelompok (Progressive) ── */}
-            <div className="grid grid-cols-2 gap-13">
-              <Select
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
+              <SearchableSelect
                 label="Kelompok Aset"
                 required
                 options={kelompokAset.map((k) => ({
@@ -494,9 +491,8 @@ export default function DaftarAset() {
                   }))
                 }
               />
-              {/* Sub-kelompok: HANYA tampil setelah kelompok dipilih */}
               {form.kelompok_id && (
-                <Select
+                <SearchableSelect
                   label="Subkelompok Aset"
                   required
                   options={filteredSubs.map((s) => ({
@@ -512,7 +508,7 @@ export default function DaftarAset() {
             </div>
 
             {/* ── Baris 3: Merek, No Seri, Lokasi, PIC ── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-13">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
               <Input
                 label="Merek / Tipe"
                 type="text"
@@ -552,7 +548,7 @@ export default function DaftarAset() {
             </div>
 
             {/* ── Baris 4: Harga, Tgl Beli, Kondisi ── */}
-            <div className="grid grid-cols-3 gap-13">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-13">
               <Input
                 label="Harga Beli (Rp)"
                 type="number"
@@ -658,9 +654,8 @@ export default function DaftarAset() {
             <div className="pt-5 border-t border-slate-100 mt-8">
               <p className="text-sm font-bold text-slate-700 mb-8 flex items-center gap-5">
                 <FileText size={16} className="text-teal-600" /> Informasi BMN
-                (opsional)
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-13 mb-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-13 mb-5">
                 <Select
                   label="Jenis Aset BMN"
                   options={[
@@ -689,21 +684,14 @@ export default function DaftarAset() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-13">
-                <div className="flex flex-col gap-1">
-                  <Input
-                    label="Kode Barang BMN"
-                    type="text"
-                    placeholder="Contoh: 3.02.01.01.002"
-                    value={form.kode_bmn}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, kode_bmn: e.target.value }))
-                    }
-                  />
-                  <p className="text-[10px] text-slate-400">
-                    Boleh sama untuk beberapa unit sejenis (dibedakan lewat NUP)
-                  </p>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
+                <Input
+                  label="Kode Barang BMN"
+                  type="text"
+                  placeholder="Contoh: 3.02.01.01.002"
+                  value={form.kode_bmn}
+                  onChange={e => setForm(f => ({ ...f, kode_bmn: e.target.value }))}
+                />
                 <Input
                   label="NUP"
                   type="number"
@@ -737,41 +725,41 @@ export default function DaftarAset() {
             </div>
 
             {/* ── Upload Foto & Lampiran (Opsional) ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
-              <div className="flex flex-col gap-5 w-full">
-                <label className="text-xs font-semibold text-slate-500 tracking-wide uppercase flex items-center gap-1">
-                  Foto Aset <span className="text-rose-500">*</span>
-                </label>
-                <div className="flex items-center gap-3 bg-white px-13 py-8 border border-slate-200 rounded-xl">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    required={!form.foto_url}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) setFotoFile(f);
-                    }}
-                    className="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-100/60 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer w-full"
-                  />
-                </div>
-              </div>
+            <div className="flex flex-col gap-5 w-full">
+              <label className="text-xs font-semibold text-slate-500 tracking-wide uppercase flex items-center gap-1">
+                Foto Aset <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                required={!form.foto_url}
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) setFotoFile(f);
+                }}
+                className="w-full text-sm text-slate-500 file:mr-13 file:py-5 file:px-13 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-teal-100 file:text-teal-700 hover:file:bg-teal-200 cursor-pointer"
+              />
+              {form.foto_url && !fotoFile && (
+                <p className="text-[10px] text-teal-600 mt-2">Foto sudah tersimpan. Unggah baru untuk mengganti.</p>
+              )}
+            </div>
 
-              <div className="flex flex-col gap-5 w-full">
-                <label className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
-                  Upload Lampiran (Opsional)
-                </label>
-                <div className="flex items-center gap-3 bg-white px-13 py-8 border border-slate-200 rounded-xl">
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) setLampiranFile(f);
-                    }}
-                    className="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-100/60 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer w-full"
-                  />
-                </div>
-              </div>
+            <div className="flex flex-col gap-5 w-full">
+              <label className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
+                Upload Lampiran (Opsional)
+              </label>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) setLampiranFile(f);
+                }}
+                className="w-full text-sm text-slate-500 file:mr-13 file:py-5 file:px-13 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+              />
+              {form.lampiran_url && !lampiranFile && (
+                <p className="text-[10px] text-teal-600 mt-2">File lampiran sudah tersimpan. Unggah baru untuk mengganti.</p>
+              )}
             </div>
 
             {/* ── Action Buttons ── */}
@@ -820,7 +808,7 @@ export default function DaftarAset() {
             className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
         </div>
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <select
             className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
             value={filterKelompok}
@@ -1048,10 +1036,10 @@ export default function DaftarAset() {
                   {formatRupiah(a.harga_beli)}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-5">
                     <button
                       onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
-                      className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-[10px] rounded-lg transition-colors"
+                      className="text-blue-600 p-5 hover:bg-blue-50 rounded-lg text-xs"
                     >
                       Detail
                     </button>
@@ -1059,15 +1047,17 @@ export default function DaftarAset() {
                       <>
                         <button
                           onClick={() => handleEdit(a)}
-                          className="p-1 text-slate-400 hover:text-teal-600 rounded-lg transition-colors"
+                          className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors"
+                          title="Edit"
                         >
-                          <Pencil size={13} />
+                          <Pencil size={12} strokeWidth={2.5} />
                         </button>
                         <button
                           onClick={() => handleDelete(a)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
+                          className="w-21 h-21 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors"
+                          title="Hapus"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={12} strokeWidth={2.5} />
                         </button>
                       </>
                     )}

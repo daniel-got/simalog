@@ -169,7 +169,7 @@ export default function AppLayout() {
                       >
                         {({ isActive }) => (
                           <>
-                            <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                            <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
                             <span className="flex-1">{name}</span>
                             {badgeKey === 'persetujuan' && persetujuanCount > 0 && (
                               <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-3 bg-rose-500 text-white text-[9px] font-black rounded-full">

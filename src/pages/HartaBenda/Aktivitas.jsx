@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Download, Pencil, Trash2, Search, ClipboardList, MapPin, UserCheck, Calendar } from 'lucide-react';
+import { Plus, Download, Pencil, Trash2, Search, ClipboardList, MapPin, UserCheck, Calendar, LayoutGrid, List } from 'lucide-react';
 import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
 import { supabase } from '../../lib/supabase';
 import { Card } from '../../components/ui/Card';
@@ -44,10 +44,80 @@ const getCleanKeterangan = (keterangan) => {
     .replace(/^Keperluan:\s*/i, '') || '-';
 };
 
+function AktivitasCard({ item, asetObj, getAsetName, onEdit, onDelete, onUpdateStatus, parseStatus }) {
+  const status = parseStatus(item.keterangan);
+  
+  return (
+    <div className="bg-white p-13 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between overflow-hidden group hover:border-slate-200 transition-colors">
+      <div className="flex-1 min-w-0 flex flex-col w-full h-full">
+        <div className="flex justify-between items-start gap-3">
+          <span className="text-[10px] lg:text-xs font-bold text-slate-800 uppercase tracking-wide truncate">
+            {getAsetName(item.id_aset)}
+          </span>
+          {status && (
+             <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider shrink-0 ${status === 'Pending' ? 'bg-amber-100 text-amber-700' :
+               status === 'Disetujui' || status === 'Dikembalikan' || status === 'Selesai' ? 'bg-green-100 text-green-700' :
+               'bg-red-100 text-red-700'
+             }`}>
+               {status}
+             </span>
+          )}
+        </div>
+        
+        <p className="text-[9px] lg:text-[10px] font-mono text-slate-400 mt-2 lg:mt-3 truncate">{asetObj?.kode_aset || '—'} · {asetObj?.lokasi_ruangan || '-'}</p>
+        
+        <div className="flex justify-between items-end mt-auto">
+          <div className="flex flex-col items-start gap-3 mt-5 lg:mt-8 pt-3 lg:pt-5 border-t border-slate-50 lg:border-slate-100 text-[9px] lg:text-[10px] font-medium text-slate-500 w-full">
+             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${item.jenis_aktivitas === 'Dipinjam' ? 'bg-blue-50 text-blue-600' :
+                 item.jenis_aktivitas === 'Dikembalikan' ? 'bg-emerald-50 text-emerald-600' :
+                 item.jenis_aktivitas === 'Mutasi Penanggung Jawab' ? 'bg-purple-50 text-purple-600' :
+                 item.jenis_aktivitas === 'Dipindahkan' ? 'bg-teal-50 text-teal-600' :
+                 'bg-slate-100 text-slate-600'
+               }`}>
+               {item.jenis_aktivitas}
+             </span>
+             <span className="flex flex-col gap-1.5 text-slate-500 mt-1">
+                <span className="flex items-center gap-2"><span className="mt-0.5">{item.tanggal}</span></span>
+                <span className="flex items-center gap-2 truncate"><span className="mt-0.5">{item.nama_staf || 'Tanpa staf'}</span></span>
+             </span>
+          </div>
+
+          <div className="flex gap-5 mt-5 lg:mt-8 pt-3 lg:pt-5 shrink-0 flex-wrap justify-end">
+             {status === 'Pending' && (
+               <>
+                 <button onClick={() => onUpdateStatus(item, 'Setujui')} className="text-emerald-600 bg-emerald-50 px-3 py-1.5 hover:bg-emerald-100 rounded-lg text-[9px] font-bold" title="Setujui">✓</button>
+                 <button onClick={() => onUpdateStatus(item, 'Tolak')} className="text-red-600 bg-red-50 px-3 py-1.5 hover:bg-red-100 rounded-lg text-[9px] font-bold" title="Tolak">✕</button>
+               </>
+             )}
+             {status === 'Disetujui' && (
+               <button onClick={() => onUpdateStatus(item, 'Kembalikan')} className="text-blue-600 bg-blue-50 px-3 py-1.5 hover:bg-blue-100 rounded-lg text-[9px] font-bold">Kembalikan</button>
+             )}
+            <button 
+              onClick={onEdit}
+              className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+              title="Edit"
+            >
+              <Pencil size={13} strokeWidth={2.5} />
+            </button>
+            <button 
+              onClick={onDelete}
+              className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+              title="Hapus"
+            >
+              <Trash2 size={13} strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Aktivitas() {
   const { daftarAset, logAktivitas, addAktivitas, updateAktivitas, deleteAktivitas, fetchDataHartaBenda } = useHartaBendaStore();
 
   const [open, setOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('card');
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY);
 
@@ -257,12 +327,28 @@ export default function Aktivitas() {
   return (
     <div className="space-y-21">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Aktivitas &amp; Log Aset</h1>
           <p className="text-xs text-slate-400 mt-2">{filtered.length} riwayat aktivitas tercatat</p>
         </div>
         <div className="flex gap-8">
+          <div className="flex bg-slate-100 rounded-xl p-3">
+            <button
+              onClick={() => setViewMode('card')}
+              className={`p-5 rounded-lg transition-colors ${viewMode === 'card' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
+              title="Tampilan Kartu"
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-5 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
+              title="Tampilan Tabel"
+            >
+              <List size={15} />
+            </button>
+          </div>
           <Button variant="ghost" size="icon" onClick={handleExport} title="Export Excel">
             <Download size={16} />
           </Button>
@@ -405,7 +491,7 @@ export default function Aktivitas() {
             className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
         </div>
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <select
             className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
             value={filterJenis}
@@ -428,6 +514,33 @@ export default function Aktivitas() {
         <div className="text-center py-34 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
           <ClipboardList size={28} className="mx-auto mb-5 text-slate-300" />
           Belum ada catatan aktivitas.
+        </div>
+      ) : viewMode === 'card' ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-13 lg:gap-21">
+            {paged.map(a => {
+              const asetObj = daftarAset.find(asset => String(asset.id) === String(a.id_aset));
+              return (
+                <AktivitasCard
+                  key={a.id}
+                  item={a}
+                  asetObj={asetObj}
+                  getAsetName={getAsetName}
+                  onEdit={() => handleEdit(a)}
+                  onDelete={() => handleDelete(a)}
+                  onUpdateStatus={handleUpdateStatus}
+                  parseStatus={parseStatus}
+                />
+              );
+            })}
+          </div>
+          <Pagination
+            total={filtered.length}
+            perPage={perPage}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPerPage}
+          />
         </div>
       ) : (
         <div className="space-y-21">
@@ -469,29 +582,29 @@ export default function Aktivitas() {
                   </td>
                   <td className="px-13 py-13 text-xs text-slate-500 max-w-[180px] truncate">{getCleanKeterangan(a.keterangan)}</td>
                   <td className="px-13 py-13">
-                    <div className="flex items-center gap-8">
-                      {/* Action Buttons */}
-                      {status === 'Pending' && (
-                        <div className="flex gap-5">
-                          <button onClick={() => handleUpdateStatus(a, 'Setujui')} className="text-[10px] font-bold px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">✓ Setujui</button>
-                          <button onClick={() => handleUpdateStatus(a, 'Tolak')} className="text-[10px] font-bold px-5 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors">✕ Tolak</button>
-                        </div>
-                      )}
-                      {status === 'Disetujui' && (
-                        <button onClick={() => handleUpdateStatus(a, 'Kembalikan')} className="text-[10px] font-bold px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">Selesaikan / Kembalikan</button>
-                      )}
+                      <div className="flex items-center gap-5">
+                        {/* Action Buttons */}
+                        {status === 'Pending' && (
+                          <>
+                            <button onClick={() => handleUpdateStatus(a, 'Setujui')} className="text-emerald-600 p-5 hover:bg-emerald-50 rounded-lg text-xs font-bold">✓ Setujui</button>
+                            <button onClick={() => handleUpdateStatus(a, 'Tolak')} className="text-red-600 p-5 hover:bg-red-50 rounded-lg text-xs font-bold">✕ Tolak</button>
+                          </>
+                        )}
+                        {status === 'Disetujui' && (
+                          <button onClick={() => handleUpdateStatus(a, 'Kembalikan')} className="text-blue-600 p-5 hover:bg-blue-50 rounded-lg text-xs font-bold">Selesaikan / Kembalikan</button>
+                        )}
 
-                      <div className="flex gap-5 items-center ml-auto shrink-0">
-                        <button onClick={() => handleEdit(a)}
-                          className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors" title="Edit">
-                          <Pencil size={12} />
-                        </button>
-                        <button onClick={() => handleDelete(a)}
-                          className="w-21 h-21 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors" title="Hapus">
-                          <Trash2 size={12} />
-                        </button>
+                        <div className="flex gap-5 items-center ml-auto shrink-0">
+                          <button onClick={() => handleEdit(a)}
+                            className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors" title="Edit">
+                            <Pencil size={12} strokeWidth={2.5} />
+                          </button>
+                          <button onClick={() => handleDelete(a)}
+                            className="w-21 h-21 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors" title="Hapus">
+                            <Trash2 size={12} strokeWidth={2.5} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
                   </td>
                 </tr>
               );

@@ -96,13 +96,11 @@ export default function PermintaanCard({
       <div className="mt-auto">
         <div className="flex items-end justify-between">
           <div className="flex flex-col">
-            <span className="text-[11px] font-medium text-slate-600 flex items-center gap-1 truncate max-w-[120px]" title={item.nama_pemohon || 'Guest'}>
-              <User size={12} className="text-slate-400 shrink-0" />
-              <span className="truncate">{item.nama_pemohon || 'Guest'}</span>
+            <span className="text-[11px] font-medium text-slate-600 truncate max-w-[120px]" title={item.nama_pemohon || 'Guest'}>
+              {item.nama_pemohon || 'Guest'}
             </span>
-            <span className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-              <Calendar size={10} className="text-slate-300" />
-              <span>{item.tanggal_minta}</span>
+            <span className="text-[10px] text-slate-400 mt-0.5">
+              {item.tanggal_minta}
             </span>
           </div>
 
@@ -111,7 +109,7 @@ export default function PermintaanCard({
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                className="p-1.5 text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors"
                 title="Edit Permintaan"
               >
                 <Pencil size={14} strokeWidth={2} />
@@ -120,7 +118,7 @@ export default function PermintaanCard({
             {onDelete && (
               <button
                 onClick={onDelete}
-                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors"
                 title="Hapus Permintaan"
               >
                 <Trash2 size={14} strokeWidth={2} />
@@ -131,20 +129,20 @@ export default function PermintaanCard({
 
         {/* Admin Approval Controls (Setujui / Tolak) */}
         {isAdmin && onUpdateStatus && (status === 'Diajukan' || status === 'Pending') && (
-          <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 mt-2.5">
+          <div className="flex items-center gap-4 pt-2.5 border-t border-slate-100 mt-2.5">
             <button
               type="button"
               onClick={() => onUpdateStatus(item.id, 'Disetujui')}
-              className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+              className="flex-1 py-1.5 px-3 bg-teal-50 text-teal-600 hover:bg-teal-100 rounded-lg text-[11px] font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <CheckCircle2 size={12} /> Setujui
+              <span>Setujui</span>
             </button>
             <button
               type="button"
               onClick={() => onUpdateStatus(item.id, 'Ditolak')}
-              className="flex-1 py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
+              className="flex-1 py-1.5 px-3 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[11px] font-bold shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <XCircle size={12} /> Tolak
+              <span>Tolak</span>
             </button>
           </div>
         )}

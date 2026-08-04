@@ -120,7 +120,7 @@ export default function Masuk() {
 
   return (
     <div className="space-y-21">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Barang Masuk</h1>
           <p className="text-xs text-slate-400 mt-2">{filtered.length} transaksi</p>
@@ -167,7 +167,7 @@ export default function Masuk() {
               value={form.kode_barang}
               onChange={e => setForm({ ...form, kode_barang: e.target.value })}
             />
-            <div className="grid grid-cols-2 gap-13">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
               <Input label="Jumlah" type="number" required min="1"
                 value={form.jumlah}
                 onChange={e => setForm({ ...form, jumlah: Number(e.target.value) })} />
@@ -208,7 +208,7 @@ export default function Masuk() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <select
             className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-slate-600 font-medium"
             value={filterKelompok}

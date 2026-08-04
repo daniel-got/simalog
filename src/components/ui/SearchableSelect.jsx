@@ -36,7 +36,7 @@ export default function SearchableSelect({
   );
 
   return (
-    <div className="flex flex-col gap-2 w-full relative" ref={wrapperRef}>
+    <div className="flex flex-col gap-5 w-full relative" ref={wrapperRef}>
       {label && (
         <label className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
           {label} {required && <span className="text-red-500">*</span>}
@@ -45,7 +45,7 @@ export default function SearchableSelect({
       
       <div 
         className={cn(
-          "w-full px-13 py-13 text-sm bg-white border rounded-xl flex items-center justify-between cursor-pointer transition-all",
+          "w-full px-13 py-8 text-sm bg-white border rounded-xl flex items-center justify-between cursor-pointer transition-all",
           isOpen ? "border-teal-500 ring-2 ring-teal-100" : "border-slate-200",
           disabled ? "bg-slate-50 opacity-60 cursor-not-allowed" : "hover:border-slate-300"
         )}

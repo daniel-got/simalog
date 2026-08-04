@@ -9,8 +9,9 @@ import SearchableSelect from '../../components/ui/SearchableSelect';
 import Pagination from '../../components/ui/Pagination';
 import {
   Plus, Search, Calendar, User, Building2,
-  Clock, AlertTriangle, X, Loader2
+  Clock, AlertTriangle, X, Loader2, Pencil, Trash2
 } from 'lucide-react';
+import { useToast } from '../../components/ui/Toast';
 
 const makeEmptyForm = (currentUser) => ({
   id_aset: '',
@@ -62,6 +63,7 @@ const tingkatColor = (tingkat) => {
 export default function LaporRusakGuest() {
   const { currentUser } = useLogistikStore();
   const { aset } = useHartaBendaStore();
+  const toast = useToast();
 
   const [open, setOpen]     = useState(false);
   const [form, setForm]     = useState(() => makeEmptyForm(currentUser));
@@ -70,6 +72,11 @@ export default function LaporRusakGuest() {
   // Data laporan dari tabel laporan_kerusakan
   const [daftarLaporan, setDaftarLaporan] = useState([]);
   const [loadingList, setLoadingList]     = useState(true);
+
+  // Form & Cancel States
+  const [editId, setEditId] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // Filter States
   const [filterText, setFilterText]           = useState('');
@@ -184,7 +191,14 @@ export default function LaporRusakGuest() {
       status:       'menunggu',
     };
 
-    const { error } = await supabase.from('laporan_kerusakan').insert([payload]);
+    let error;
+    if (editId) {
+      const { error: err } = await supabase.from('laporan_kerusakan').update(payload).eq('id', editId);
+      error = err;
+    } else {
+      const { error: err } = await supabase.from('laporan_kerusakan').insert([payload]);
+      error = err;
+    }
     setLoading(false);
 
     if (error) {
@@ -192,9 +206,36 @@ export default function LaporRusakGuest() {
       return;
     }
 
+    toast.success(editId ? 'Laporan kerusakan berhasil diperbarui!' : 'Laporan kerusakan berhasil dikirim!');
+
     setForm(makeEmptyForm(currentUser));
+    setEditId(null);
     setOpen(false);
     fetchDaftarLaporan();
+  };
+
+  const handleEdit = (rep) => {
+    setEditId(rep.id);
+    setForm({
+      id_aset: rep.id_aset,
+      nama_pelapor: rep.nama_pelapor,
+      tingkat: rep.tingkat,
+      deskripsi: rep.kendala || rep.deskripsi
+    });
+    setOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!itemToDelete) return;
+    const { error } = await supabase.from('laporan_kerusakan').delete().eq('id', itemToDelete.id);
+    if (error) {
+      alert('Gagal membatalkan: ' + error.message);
+      return;
+    }
+    setDaftarLaporan(prev => prev.filter(r => r.id !== itemToDelete.id));
+    setIsDeleteModalOpen(false);
+    setItemToDelete(null);
   };
 
   // ── Filter & Search ──────────────────────────────────────────────────────
@@ -228,18 +269,20 @@ export default function LaporRusakGuest() {
   return (
     <div className="space-y-21">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Laporan Perawatan Aset</h1>
           <p className="text-xs text-slate-400 mt-1">{filteredReports.length} laporan kerusakan ditemukan</p>
         </div>
         <Button
           size="sm"
-          onClick={() => setOpen(!open)}
-          className="bg-teal-600 hover:bg-teal-700 text-white font-bold"
+          onClick={() => {
+            setEditId(null);
+            setForm(makeEmptyForm(currentUser));
+            setOpen(true);
+          }}
         >
-          {open ? <X size={15} /> : <Plus size={15} />}
-          <span className="ml-1">{open ? 'Tutup Form' : 'Lapor Kerusakan'}</span>
+          <Plus size={15} /> Lapor Kerusakan
         </Button>
       </div>
 
@@ -247,7 +290,7 @@ export default function LaporRusakGuest() {
       {open && (
         <Card className="border-teal-200 bg-teal-50/40 p-21">
           <p className="text-base font-bold text-slate-700 mb-13 flex items-center gap-2">
-            ⚠️ Laporan Kerusakan Aset Baru
+            {editId ? '✏️ Edit Laporan Kerusakan' : '⚠️ Laporan Kerusakan Aset Baru'}
           </p>
           <form onSubmit={handleSubmit} className="space-y-13">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-13">
@@ -289,10 +332,10 @@ export default function LaporRusakGuest() {
             </div>
 
             <div className="flex justify-end gap-8 pt-5">
-              <Button type="button" variant="ghost" size="sm" onClick={() => { setForm(makeEmptyForm(currentUser)); setOpen(false); }}>
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setForm(makeEmptyForm(currentUser)); setEditId(null); setOpen(false); }}>
                 Batal
               </Button>
-              <Button type="submit" disabled={loading} size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+              <Button type="submit" disabled={loading} size="sm">
                 {loading ? <><Loader2 size={13} className="animate-spin mr-1" /> Mengirim...</> : 'Simpan'}
               </Button>
             </div>
@@ -303,13 +346,13 @@ export default function LaporRusakGuest() {
       {/* Baris Filter & Pencarian */}
       <div className="bg-slate-50 p-13 rounded-2xl border border-slate-100 shadow-sm space-y-8">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search size={14} className="absolute left-13 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Cari laporan (nama aset, kode, kendala)..."
             value={filterText}
             onChange={e => setFilterText(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 h-11 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
+            className="w-full pl-34 pr-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
           />
         </div>
 
@@ -318,7 +361,7 @@ export default function LaporRusakGuest() {
             <select
               value={filterKategori}
               onChange={e => setFilterKategori(e.target.value)}
-              className="w-full px-4 py-2.5 h-11 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
+              className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
             >
               <option value="">Semua Kategori Aset</option>
               {KATEGORI_OPTIONS.map(opt => (
@@ -331,7 +374,7 @@ export default function LaporRusakGuest() {
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2.5 h-11 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
+              className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
             >
               <option value="">Semua Status</option>
               <option value="menunggu">Menunggu Pengecekan</option>
@@ -346,7 +389,7 @@ export default function LaporRusakGuest() {
               type="date"
               value={filterStartDate}
               onChange={e => setFilterStartDate(e.target.value)}
-              className="w-full px-4 py-2.5 h-11 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
+              className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
             />
           </div>
 
@@ -356,7 +399,7 @@ export default function LaporRusakGuest() {
               type="date"
               value={filterEndDate}
               onChange={e => setFilterEndDate(e.target.value)}
-              className="w-full px-4 py-2.5 h-11 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
+              className="w-full px-8 py-8 text-[10px] bg-white border border-slate-200 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all text-slate-600 font-medium"
             />
           </div>
         </div>
@@ -382,7 +425,7 @@ export default function LaporRusakGuest() {
         </div>
       ) : (
         <div className="space-y-21">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-13 lg:gap-21 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-13 lg:gap-21 w-full items-start">
             {pagedReports.map(rep => {
               const asetDetail = rep.aset || getAssetDetails(rep.id_aset);
               const status     = rep.status || 'menunggu';
@@ -391,10 +434,10 @@ export default function LaporRusakGuest() {
               return (
                 <div
                   key={rep.id}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden group"
+                  className="bg-white p-13 lg:p-0 rounded-2xl border border-slate-100 shadow-sm flex flex-row lg:flex-col gap-13 lg:gap-0 items-center lg:items-stretch overflow-hidden group hover:shadow-md transition-shadow"
                 >
-                  {/* Gambar Aset */}
-                  <div className="w-full h-40 rounded-t-2xl overflow-hidden bg-slate-100 flex items-center justify-center relative flex-shrink-0">
+                  {/* Container Gambar */}
+                  <div className="w-89 h-89 lg:w-full lg:h-48 bg-slate-50 rounded-xl lg:rounded-none lg:border-0 lg:border-b border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
                     {asetDetail?.foto_url || asetDetail?.image_url ? (
                       <img
                         src={asetDetail.foto_url || asetDetail.image_url}
@@ -402,64 +445,76 @@ export default function LaporRusakGuest() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
-                      <Building2 size={34} className="text-slate-300" />
+                      <Building2 size={21} className="text-slate-300" />
                     )}
-                    <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-slate-500 font-bold text-[9px] px-2 py-1 rounded-md border border-slate-100 uppercase tracking-wider">
-                      {asetDetail?.kategori_aset || 'Umum'}
-                    </span>
                   </div>
 
                   {/* Body */}
-                  <div className="flex flex-col flex-1 p-4">
-                    {/* Nama & Kode */}
-                    <div className="mb-3">
-                      <h3 className="text-sm font-bold text-slate-800 leading-tight truncate">
+                  <div className="flex-1 min-w-0 flex flex-col py-2 lg:p-13">
+                    <div className="flex flex-col">
+                      {/* Header Mobile: Kategori & Status */}
+                      <div className="flex justify-between items-start gap-5 lg:hidden mb-2">
+                        <span className="text-[9px] font-mono bg-slate-50 text-slate-500 px-5 py-2 rounded-md font-bold uppercase tracking-wider truncate">
+                          {asetDetail?.kategori_aset || 'Umum'}
+                        </span>
+                        <span className={`text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider shrink-0 ${statusBadge(status)}`}>
+                          {statusLabel(status)}
+                        </span>
+                      </div>
+
+                      {/* Name */}
+                      <h3 className="text-sm font-bold text-slate-800 leading-tight truncate mb-2">
                         {asetDetail?.nama_aset || 'Aset Tidak Dikenal'}
                       </h3>
-                      <p className="text-[10px] font-mono text-slate-400 mt-1">
-                        {asetDetail?.kode_aset || asetDetail?.id || rep.id_aset}
+
+                      {/* Kendala & Kode Aset */}
+                      <p className="text-[10px] font-medium text-slate-500 truncate mt-2 lg:mt-0">
+                        <span className="font-semibold text-slate-400">Kendala:</span> <span className="text-slate-600 ml-1">{kendala}</span>
                       </p>
+
+                      <h4 className="hidden lg:block text-[10px] font-mono text-slate-400 truncate mt-2">
+                        {asetDetail?.kode_aset || asetDetail?.id || rep.id_aset}
+                      </h4>
                     </div>
 
-                    {/* Info detail */}
-                    <div className="bg-slate-50 p-3 rounded-xl space-y-1 text-xs text-slate-600 mb-3">
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-slate-400">Kendala</span>
-                        <span className="text-slate-600 text-right max-w-[60%] line-clamp-2">{kendala}</span>
+                    {/* Footer Detail */}
+                    <div className="flex justify-between items-end lg:items-end mt-4 pt-4 border-t border-slate-50">
+                      <div className="flex flex-col">
+                        <span className="hidden lg:block text-[10px] font-semibold text-slate-500 mb-3">
+                          Status: <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider ${statusBadge(status)}`}>{statusLabel(status)}</span>
+                        </span>
+                        <span className="text-xs font-black text-slate-700 leading-none">
+                          <span className={`${tingkatColor(rep.tingkat)}`}>{rep.tingkat}</span>
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-medium mt-1">
+                          {rep.tanggal}
+                        </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-slate-400">Tingkat</span>
-                        <span className={`font-bold ${tingkatColor(rep.tingkat)}`}>{rep.tingkat}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-slate-400">Tgl Lapor</span>
-                        <span className="text-slate-600">{rep.tanggal}</span>
-                      </div>
-                      {/* Tampilkan catatan admin jika ada */}
-                      {rep.catatan_admin && (
-                        <div className="flex flex-col gap-1 pt-1 border-t border-slate-200">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase">Catatan Admin</span>
-                          <span className="text-xs text-slate-600 italic">{rep.catatan_admin}</span>
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Badge Status */}
-                    <div className="mb-2">
-                      <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider inline-block ${statusBadge(status)}`}>
-                        {statusLabel(status)}
-                      </span>
-                    </div>
-
-                    {/* Footer divider */}
-                    <div className="border-t border-slate-100 pt-3 mt-auto flex items-center justify-between text-xs text-slate-400">
-                      <div className="flex items-center gap-1 min-w-0">
-                        <User size={12} className="shrink-0" />
-                        <span className="truncate font-semibold">{currentUser?.nama || 'Guest'}</span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Clock size={10} />
-                        <span>{rep.tanggal}</span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] font-semibold text-slate-600 max-w-[100px] truncate">{rep.nama_pelapor || currentUser?.nama || 'Guest'}</span>
+                        {rep.catatan_admin ? (
+                          <span className="text-[9px] font-medium text-slate-400 max-w-[100px] truncate italic" title={rep.catatan_admin}>
+                            Admin: {rep.catatan_admin}
+                          </span>
+                        ) : status === 'menunggu' ? (
+                          <div className="flex gap-2 mt-1">
+                            <button
+                              onClick={() => handleEdit(rep)}
+                              className="p-1.5 text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors"
+                              title="Edit Laporan"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => { setItemToDelete(rep); setIsDeleteModalOpen(true); }}
+                              className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors"
+                              title="Batalkan Laporan"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -476,6 +531,46 @@ export default function LaporRusakGuest() {
             onPageChange={setCurrentPage}
             onPerPageChange={setPerPage}
           />
+        </div>
+      )}
+
+      {/* ── CUSTOM MODAL KONFIRMASI BATAL ── */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => {
+              setIsDeleteModalOpen(false);
+              setItemToDelete(null);
+            }}
+          />
+          <div className="relative bg-white rounded-3xl shadow-xl border border-slate-100 w-full max-w-md p-21 flex flex-col gap-13 z-10 animate-in fade-in zoom-in-95 duration-150 text-center items-center">
+            <div className="mt-8">
+              <h3 className="text-lg font-black text-slate-800 tracking-tight mb-8">Batalkan Laporan</h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
+                Yakin ingin membatalkan laporan kerusakan aset <span className="font-bold text-slate-700">"{itemToDelete?.aset?.nama_aset || 'Aset'}"</span>? Laporan akan dihapus.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-8 mt-13 w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setItemToDelete(null);
+                }}
+                className="px-18 py-8 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 active:scale-95 transition-all select-none"
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancel}
+                className="px-18 py-8 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-sm active:scale-95 transition-all select-none"
+              >
+                Ya, Batalkan
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -224,7 +224,7 @@ export default function DetailAset() {
 
               {/* Informasi Detail Aset */}
               <div className="pt-13 border-t border-slate-100 space-y-13">
-                <div className="grid grid-cols-2 gap-13">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                       Merek / Tipe
@@ -243,7 +243,7 @@ export default function DetailAset() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-13 pt-8 border-t border-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-13 pt-8 border-t border-slate-50">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                       Lokasi / Ruangan
@@ -263,7 +263,7 @@ export default function DetailAset() {
                 </div>
 
                 {/* ── Informasi BMN ── */}
-                <div className="grid grid-cols-2 gap-13 pt-8 border-t border-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-13 pt-8 border-t border-slate-50">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                       Jenis Aset BMN
@@ -282,7 +282,7 @@ export default function DetailAset() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-13 pt-8 border-t border-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-13 pt-8 border-t border-slate-50">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                       Kode Barang BMN
@@ -301,7 +301,7 @@ export default function DetailAset() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-13 pt-8 border-t border-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-13 pt-8 border-t border-slate-50">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                       Kondisi Aset

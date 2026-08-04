@@ -170,7 +170,7 @@ export default function UtamaAset() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={chartData}
-                    margin={{ top: 10, right: 5, left: -21, bottom: 20 }}
+                    margin={{ top: 10, right: 5, left: -21, bottom: 50 }}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -181,10 +181,13 @@ export default function UtamaAset() {
                       dataKey="name"
                       interval={0}
                       tick={{
-                        fontSize: 10,
+                        fontSize: 9,
                         fontFamily: 'Inter',
                         fill: '#94a3b8',
                         fontWeight: 600,
+                        angle: -45,
+                        textAnchor: 'end',
+                        dy: 5,
                       }}
                       tickLine={false}
                       axisLine={false}

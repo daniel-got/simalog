@@ -11,7 +11,11 @@ import {
   Calendar,
   FileText,
   AlertOctagon,
+  LayoutGrid,
+  List,
+  Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { supabase } from '../../lib/supabase';
 import { Card } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -22,8 +26,8 @@ const tingkatBadge = (tingkat) => {
   switch (tingkat) {
     case 'Ringan': return 'bg-amber-50 text-amber-700 border border-amber-200';
     case 'Sedang': return 'bg-orange-50 text-orange-700 border border-orange-200';
-    case 'Berat':  return 'bg-rose-50 text-rose-700 border border-rose-200';
-    default:       return 'bg-slate-100 text-slate-600 border border-slate-200';
+    case 'Berat': return 'bg-rose-50 text-rose-700 border border-rose-200';
+    default: return 'bg-slate-100 text-slate-600 border border-slate-200';
   }
 };
 
@@ -111,18 +115,155 @@ function ConfirmModal({
   );
 }
 
+// ─── Card Components ────────────────────────────────────────────────────────────
+
+function PersetujuanPeminjamanCard({ item, confirmSetujuiPeminjaman, confirmTolakPeminjaman, actionLoading }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group">
+      
+      {/* Header */}
+      <div>
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0">
+            <h3 className="font-bold text-slate-800 text-xs truncate max-w-[150px]" title={item.aset?.nama_aset}>
+              {item.aset?.nama_aset || `Aset #${item.id_aset}`}
+            </h3>
+          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 border bg-amber-50 text-amber-600 border-amber-100">
+            Diajukan
+          </span>
+        </div>
+        <span className="text-[11px] text-slate-400 font-normal mt-0.5 block truncate">
+          {item.aset?.kode_aset || '—'}
+        </span>
+
+        {/* Body */}
+        <div className="bg-slate-50/70 rounded-lg p-2 my-2.5 flex flex-col gap-2.5 border border-slate-100">
+          {/* Row 1: Keperluan */}
+          <div className="flex flex-col min-w-0">
+            <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">Keperluan</span>
+            <span className="text-[10px] font-bold text-slate-700 mt-0.5 truncate" title={item.keperluan}>{item.keperluan || '—'}</span>
+          </div>
+
+          {/* Row 2: Grid 2 cols */}
+          <div className="grid grid-cols-2 gap-2 border-t border-slate-200/60 pt-2.5">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">Peminjam</span>
+              <span className="text-[10px] font-bold text-slate-700 mt-0.5 truncate" title={item.nama_peminjam}>{item.nama_peminjam || '—'}</span>
+            </div>
+            
+            <div className="flex flex-col min-w-0">
+              <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">Tanggal</span>
+              <span className="text-[10px] font-bold text-slate-700 mt-0.5 truncate" title={`${item.tanggal_pinjam} s/d ${item.tanggal_kembali}`}>{item.tanggal_pinjam || '—'} s/d {item.tanggal_kembali || '—'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer (Buttons) */}
+      <div className="mt-auto">
+        <div className="flex items-center gap-4 pt-4 border-t border-slate-100 mt-4">
+          <button
+            onClick={() => confirmSetujuiPeminjaman(item)}
+            disabled={actionLoading === item.id}
+            className="flex-1 py-2 px-3 bg-teal-50/60 border border-teal-100 text-teal-600 hover:bg-teal-50 rounded-xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            {actionLoading === item.id ? <Loader2 size={12} className="animate-spin shrink-0" /> : 'Setujui'}
+          </button>
+          <button
+            onClick={() => confirmTolakPeminjaman(item)}
+            disabled={actionLoading === item.id}
+            className="flex-1 py-2 px-3 bg-rose-50/60 border border-rose-100 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            Tolak
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PersetujuanKerusakanCard({ item, confirmVerifikasiKerusakan, confirmTolakKerusakan, actionLoading, tingkatBadge }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group">
+      
+      {/* Header */}
+      <div>
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0">
+            <h3 className="font-bold text-slate-800 text-xs truncate max-w-[150px]" title={item.aset?.nama_aset}>
+              {item.aset?.nama_aset || `Aset #${item.id_aset}`}
+            </h3>
+          </div>
+          {item.tingkat && (
+             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 border ${tingkatBadge(item.tingkat)}`}>
+               {item.tingkat}
+             </span>
+          )}
+        </div>
+        <span className="text-[11px] text-slate-400 font-normal mt-0.5 block truncate">
+          {item.aset?.kode_aset || '—'}
+        </span>
+
+        {/* Body */}
+        <div className="bg-slate-50/70 rounded-lg p-2 my-2.5 flex flex-col gap-2.5 border border-slate-100">
+          {/* Row 1: Kendala */}
+          <div className="flex flex-col min-w-0">
+            <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">Kendala / Kerusakan</span>
+            <span className="text-[10px] font-bold text-slate-700 mt-0.5 truncate" title={item.kendala || item.deskripsi}>{item.kendala || item.deskripsi || '—'}</span>
+          </div>
+
+          {/* Row 2: Grid 2 cols */}
+          <div className="grid grid-cols-2 gap-2 border-t border-slate-200/60 pt-2.5">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">Pelapor</span>
+              <span className="text-[10px] font-bold text-slate-700 mt-0.5 truncate" title={item.nama_pelapor}>{item.nama_pelapor || '—'}</span>
+            </div>
+            
+            <div className="flex flex-col min-w-0">
+              <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">Tgl Lapor</span>
+              <span className="text-[10px] font-bold text-slate-700 mt-0.5 truncate" title={item.tanggal || item.created_at?.split('T')[0]}>{item.tanggal || item.created_at?.split('T')[0] || '—'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer (Buttons) */}
+      <div className="mt-auto">
+        <div className="flex items-center gap-4 pt-4 border-t border-slate-100 mt-4">
+          <button
+            onClick={() => confirmVerifikasiKerusakan(item)}
+            disabled={actionLoading === item.id}
+            className="flex-1 py-2 px-3 bg-teal-50/60 border border-teal-100 text-teal-600 hover:bg-teal-50 rounded-xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            {actionLoading === item.id ? <Loader2 size={12} className="animate-spin shrink-0" /> : 'Verifikasi'}
+          </button>
+          <button
+            onClick={() => confirmTolakKerusakan(item)}
+            disabled={actionLoading === item.id}
+            className="flex-1 py-2 px-3 bg-rose-50/60 border border-rose-100 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            Tolak
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════════════════════
 export default function Persetujuan() {
   // ── State data ────────────────────────────────────────────────────────────
-  const [peminjaman, setPeminjaman]       = useState([]);
-  const [kerusakan, setKerusakan]         = useState([]);
-  const [loadingP, setLoadingP]           = useState(true);
-  const [loadingK, setLoadingK]           = useState(true);
+  const [peminjaman, setPeminjaman] = useState([]);
+  const [kerusakan, setKerusakan] = useState([]);
+  const [loadingP, setLoadingP] = useState(true);
+  const [loadingK, setLoadingK] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
-  const [isRealtime, setIsRealtime]       = useState(false); // status koneksi realtime
-  const [activeTab, setActiveTab]         = useState('peminjaman'); // 'peminjaman' | 'kerusakan'
+  const [isRealtime, setIsRealtime] = useState(false); // status koneksi realtime
+  const [activeTab, setActiveTab] = useState('peminjaman'); // 'peminjaman' | 'kerusakan'
+  const [viewMode, setViewMode] = useState('table'); // 'card' | 'table'
 
   // ── Confirm modal state ───────────────────────────────────────────────────
   const [modal, setModal] = useState({
@@ -412,6 +553,38 @@ export default function Persetujuan() {
     });
   };
 
+  const handleExport = () => {
+    const wb = XLSX.utils.book_new();
+
+    if (activeTab === 'peminjaman') {
+      const exportData = peminjaman.map(item => ({
+        'ID Peminjaman': item.id,
+        'Kode Aset': item.aset?.kode_aset || '-',
+        'Nama Aset': item.aset?.nama_aset || '-',
+        'Peminjam': item.nama_peminjam || '-',
+        'Keperluan': item.keperluan || '-',
+        'Tanggal Pinjam': item.tanggal_pinjam || '-',
+        'Tanggal Kembali': item.tanggal_kembali || '-',
+        'Status': item.status || 'Pending'
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), 'Peminjaman');
+      XLSX.writeFile(wb, 'Data_Persetujuan_Peminjaman.xlsx');
+    } else if (activeTab === 'kerusakan') {
+      const exportData = kerusakan.map(item => ({
+        'ID Laporan': item.id,
+        'Kode Aset': item.aset?.kode_aset || '-',
+        'Nama Aset': item.aset?.nama_aset || '-',
+        'Pelapor': item.nama_pelapor || '-',
+        'Kendala / Kerusakan': item.kendala || item.deskripsi || '-',
+        'Tingkat': item.tingkat || '-',
+        'Tanggal Lapor': item.tanggal || item.created_at?.split('T')[0] || '-',
+        'Status': item.status || 'Pending'
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), 'Kerusakan');
+      XLSX.writeFile(wb, 'Data_Persetujuan_Kerusakan.xlsx');
+    }
+  };
+
   // ── Total badge count ─────────────────────────────────────────────────────
   const totalPending = peminjaman.length + kerusakan.length;
 
@@ -420,7 +593,7 @@ export default function Persetujuan() {
     <div className="space-y-8">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div>
           <h1 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-4">
             Persetujuan
@@ -433,6 +606,32 @@ export default function Persetujuan() {
           <p className="text-xs text-slate-400 mt-2">
             Daftar pengajuan peminjaman dan laporan kerusakan yang memerlukan verifikasi.
           </p>
+        </div>
+        <div className="flex gap-5">
+          <div className="flex bg-slate-100 rounded-xl p-3">
+            <button
+              onClick={() => setViewMode('card')}
+              className={`p-5 rounded-lg transition-colors ${viewMode === 'card' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
+              title="Tampilan Kartu"
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-5 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
+              title="Tampilan Tabel"
+            >
+              <List size={15} />
+            </button>
+          </div>
+          
+          <button
+            onClick={handleExport}
+            className="w-[34px] h-[34px] rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-colors flex items-center justify-center shadow-sm"
+            title="Export Excel"
+          >
+            <Download size={15} />
+          </button>
         </div>
       </div>
 
@@ -471,6 +670,18 @@ export default function Persetujuan() {
             </div>
           ) : peminjaman.length === 0 ? (
             <EmptyState icon={ClipboardList} label="Tidak ada pengajuan peminjaman yang menunggu persetujuan." />
+          ) : viewMode === 'card' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {peminjaman.map((item) => (
+                <PersetujuanPeminjamanCard
+                  key={item.id}
+                  item={item}
+                  confirmSetujuiPeminjaman={confirmSetujuiPeminjaman}
+                  confirmTolakPeminjaman={confirmTolakPeminjaman}
+                  actionLoading={actionLoading}
+                />
+              ))}
+            </div>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               <Table headers={['Aset', 'Peminjam', 'Keperluan', 'Tgl Pinjam - Kembali', 'Aksi']}>
@@ -499,17 +710,18 @@ export default function Persetujuan() {
                         <button
                           onClick={() => confirmSetujuiPeminjaman(item)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-5 px-8 py-5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                          className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                          title="Setujui Peminjaman"
                         >
-                          {actionLoading === item.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
-                          Setujui
+                          {actionLoading === item.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
                         </button>
                         <button
                           onClick={() => confirmTolakPeminjaman(item)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-5 px-8 py-5 border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                          className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors disabled:opacity-50"
+                          title="Tolak Peminjaman"
                         >
-                          <XCircle size={10} /> Tolak
+                          <XCircle size={14} />
                         </button>
                       </div>
                     </td>
@@ -529,6 +741,19 @@ export default function Persetujuan() {
             </div>
           ) : kerusakan.length === 0 ? (
             <EmptyState icon={AlertTriangle} label="Tidak ada laporan kerusakan yang menunggu verifikasi." />
+          ) : viewMode === 'card' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {kerusakan.map((item) => (
+                <PersetujuanKerusakanCard
+                  key={item.id}
+                  item={item}
+                  confirmVerifikasiKerusakan={confirmVerifikasiKerusakan}
+                  confirmTolakKerusakan={confirmTolakKerusakan}
+                  actionLoading={actionLoading}
+                  tingkatBadge={tingkatBadge}
+                />
+              ))}
+            </div>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               <Table headers={['Aset', 'Pelapor', 'Kendala', 'Tgl Lapor', 'Efek Verifikasi', 'Aksi']}>
@@ -564,17 +789,18 @@ export default function Persetujuan() {
                         <button
                           onClick={() => confirmVerifikasiKerusakan(item)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-5 px-8 py-5 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                          className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                          title="Verifikasi Kerusakan"
                         >
-                          {actionLoading === item.id ? <Loader2 size={10} className="animate-spin" /> : <ShieldCheck size={10} />}
-                          Verifikasi
+                          {actionLoading === item.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
                         </button>
                         <button
                           onClick={() => confirmTolakKerusakan(item)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-5 px-8 py-5 border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                          className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors disabled:opacity-50"
+                          title="Tolak Kerusakan"
                         >
-                          <XCircle size={10} /> Tolak
+                          <XCircle size={14} />
                         </button>
                       </div>
                     </td>

@@ -100,7 +100,7 @@ export default function DetailBarang() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-13 pt-13 border-t border-slate-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-13 pt-13 border-t border-slate-100">
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Harga</p>
                   <p className="text-sm font-black text-emerald-600">
@@ -121,7 +121,7 @@ export default function DetailBarang() {
           </Card>
 
           {/* Statistik */}
-          <div className="grid grid-cols-2 gap-13">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
             <Card className="p-13 border-emerald-100 bg-emerald-50/50 shadow-sm flex flex-col justify-center items-center text-center">
               <div className="w-34 h-34 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-8">
                 <LogIn size={16} strokeWidth={2.5} />

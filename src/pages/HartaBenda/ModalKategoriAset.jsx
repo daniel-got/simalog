@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Layers, Tag, ChevronRight, Loader2 } from 'lucide-react';
+import Button from '../../components/ui/Button';
 import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
 
 const MAINTENANCE_OPTIONS = [
-  { value: 'km', label: 'Berbasis KM (Kendaraan)', icon: '🚗' },
-  { value: 'bulan', label: 'Berbasis Bulan (Periodik)', icon: '📅' },
-  { value: 'tidak', label: 'Tanpa Servis Berkala', icon: '📦' },
+  { value: 'km', label: 'Berbasis KM', subLabel: '(Kendaraan)' },
+  { value: 'bulan', label: 'Berbasis Bulan', subLabel: '(Periodik)' },
+  { value: 'tidak', label: 'Tanpa Servis Berkala', subLabel: null },
 ];
 
 export default function ModalKategoriAset({ onClose }) {
@@ -114,17 +115,15 @@ export default function ModalKategoriAset({ onClose }) {
           <button
             type="button"
             onClick={() => setActiveTab('kelompok')}
-            className={`flex items-center gap-5 px-13 py-8 rounded-full text-xs font-extrabold transition-all border ${
-              activeTab === 'kelompok'
-                ? 'bg-white text-teal-600 border-teal-500 shadow-sm'
-                : 'bg-transparent text-slate-400 border-slate-200 hover:text-slate-600'
-            }`}
+            className={`flex items-center gap-5 px-13 py-8 rounded-full text-xs font-extrabold transition-all border ${activeTab === 'kelompok'
+              ? 'bg-white text-teal-600 border-teal-500 shadow-sm'
+              : 'bg-transparent text-slate-400 border-slate-200 hover:text-slate-600'
+              }`}
           >
             <Layers size={14} />
             Kelompok Aset
-            <span className={`ml-2 px-5 py-2 text-[10px] rounded-full font-bold ${
-              activeTab === 'kelompok' ? 'bg-teal-50 text-teal-600' : 'bg-slate-100 text-slate-500'
-            }`}>
+            <span className={`ml-2 px-5 py-2 text-[10px] rounded-full font-bold ${activeTab === 'kelompok' ? 'bg-teal-50 text-teal-600' : 'bg-slate-100 text-slate-500'
+              }`}>
               {kelompokAset.length}
             </span>
           </button>
@@ -132,17 +131,15 @@ export default function ModalKategoriAset({ onClose }) {
           <button
             type="button"
             onClick={() => setActiveTab('sub')}
-            className={`flex items-center gap-5 px-13 py-8 rounded-full text-xs font-extrabold transition-all border ${
-              activeTab === 'sub'
-                ? 'bg-white text-teal-600 border-teal-500 shadow-sm'
-                : 'bg-transparent text-slate-400 border-slate-200 hover:text-slate-600'
-            }`}
+            className={`flex items-center gap-5 px-13 py-8 rounded-full text-xs font-extrabold transition-all border ${activeTab === 'sub'
+              ? 'bg-white text-teal-600 border-teal-500 shadow-sm'
+              : 'bg-transparent text-slate-400 border-slate-200 hover:text-slate-600'
+              }`}
           >
             <Tag size={14} />
             Sub-Kelompok
-            <span className={`ml-2 px-5 py-2 text-[10px] rounded-full font-bold ${
-              activeTab === 'sub' ? 'bg-teal-50 text-teal-600' : 'bg-slate-100 text-slate-500'
-            }`}>
+            <span className={`ml-2 px-5 py-2 text-[10px] rounded-full font-bold ${activeTab === 'sub' ? 'bg-teal-50 text-teal-600' : 'bg-slate-100 text-slate-500'
+              }`}>
               {subKelompokAset.length}
             </span>
           </button>
@@ -156,35 +153,38 @@ export default function ModalKategoriAset({ onClose }) {
             <div className="space-y-13">
               {/* Form Tambah Kelompok */}
               <div className="p-13 bg-slate-50 rounded-2xl border border-slate-100 space-y-8">
-                <label className="text-[10px] font-bold text-teal-600 tracking-wider uppercase flex items-center gap-5">
+                <label className="-mt-5 text-xs font-semibold text-teal-600 tracking-wide uppercase flex items-center gap-2 mb-5">
                   <Plus size={13} /> TAMBAH KELOMPOK BARU
                 </label>
-                <form onSubmit={handleAddKelompok} className="flex gap-8">
+                <form onSubmit={handleAddKelompok} className="flex flex-col sm:flex-row gap-5">
                   <input
                     type="text"
                     placeholder="Nama Kelompok (contoh: Kendaraan)"
                     value={formKelompok.nama}
                     onChange={(e) => setFormKelompok((f) => ({ ...f, nama: e.target.value }))}
                     required
-                    className="flex-1 px-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all text-slate-700 placeholder:text-slate-300"
+                    className="flex-1 w-full px-13 py-8 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all text-slate-700 placeholder:text-slate-300"
                   />
-                  <input
-                    type="text"
-                    placeholder="PREFIX (KND)"
-                    value={formKelompok.prefix_kode}
-                    onChange={(e) => setFormKelompok((f) => ({ ...f, prefix_kode: e.target.value.toUpperCase() }))}
-                    maxLength={5}
-                    required
-                    className="w-89 px-8 py-8 text-xs text-center font-mono uppercase bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all text-slate-700 placeholder:text-slate-300"
-                  />
-                  <button
-                    type="submit"
-                    disabled={savingKelompok}
-                    className="px-13 py-8 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-full flex items-center gap-5 shadow-sm transition-all shrink-0 active:scale-95 disabled:opacity-60"
-                  >
-                    {savingKelompok ? <Loader2 size={13} className="animate-spin" /> : <Plus size={14} strokeWidth={3} />}
-                    Tambah
-                  </button>
+                  <div className="flex gap-5 w-full sm:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Kode (KND)"
+                      value={formKelompok.prefix_kode}
+                      onChange={(e) => setFormKelompok((f) => ({ ...f, prefix_kode: e.target.value.toUpperCase() }))}
+                      maxLength={5}
+                      required
+                      className="w-1/2 sm:w-24 px-8 py-8 text-xs text-center font-mono uppercase bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all text-slate-700 placeholder:text-slate-300"
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={savingKelompok}
+                      className="w-1/2 sm:w-auto shrink-0 justify-center"
+                    >
+                      {savingKelompok ? <Loader2 size={13} className="animate-spin" /> : <Plus size={14} strokeWidth={3} />}
+                      Tambah
+                    </Button>
+                  </div>
                 </form>
               </div>
 
@@ -231,13 +231,13 @@ export default function ModalKategoriAset({ onClose }) {
             <div className="space-y-13">
               {/* Form Tambah Sub-Kelompok */}
               <div className="p-13 bg-slate-50 rounded-2xl border border-slate-100 space-y-8">
-                <label className="text-[10px] font-bold text-teal-600 tracking-wider uppercase flex items-center gap-5">
+                <label className="-mt-2 text-xs font-semibold text-teal-600 tracking-wide uppercase flex items-center gap-2 mb-5">
                   <Plus size={13} /> TAMBAH SUB-KELOMPOK BARU
                 </label>
                 <form onSubmit={handleAddSub} className="space-y-8">
-                  <div className="grid grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase mb-5">Kelompok Induk</p>
+                      <p className="text-xs font-semibold text-slate-500 tracking-wide mb-3">Kelompok Induk</p>
                       <select
                         value={formSub.kelompok_id}
                         onChange={(e) => setFormSub((f) => ({ ...f, kelompok_id: e.target.value }))}
@@ -251,7 +251,7 @@ export default function ModalKategoriAset({ onClose }) {
                       </select>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase mb-5">Nama Sub-Kelompok</p>
+                      <p className="text-xs font-semibold text-slate-500 tracking-wide mb-3">Nama Sub-Kelompok</p>
                       <input
                         type="text"
                         placeholder="contoh: AC / Air Conditioner"
@@ -263,39 +263,45 @@ export default function ModalKategoriAset({ onClose }) {
                     </div>
                   </div>
 
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase mb-5">Tipe Maintenance</p>
-                    <div className="grid grid-cols-3 gap-8">
+                  <div className="pt-5">
+                    <p className="text-xs font-semibold text-slate-500 tracking-wide mb-5">Tipe Maintenance</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                       {MAINTENANCE_OPTIONS.map((opt) => (
                         <button
                           key={opt.value}
                           type="button"
                           onClick={() => setFormSub((f) => ({ ...f, maintenance_type: opt.value }))}
-                          className={`text-left p-8 rounded-xl border transition-all ${
-                            formSub.maintenance_type === opt.value
-                              ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                          }`}
+                          className={`flex flex-col items-center justify-center gap-1.5 px-8 py-13 rounded-xl border transition-all min-h-[64px] ${formSub.maintenance_type === opt.value
+                            ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                            }`}
                         >
-                          <p className="text-sm mb-3">{opt.icon}</p>
-                          <p className={`text-[11px] font-bold leading-tight ${
-                            formSub.maintenance_type === opt.value ? 'text-teal-600' : 'text-slate-700'
-                          }`}>
+                          <span className={`text-xs font-bold leading-none text-center ${formSub.maintenance_type === opt.value ? 'text-teal-600' : 'text-slate-700'
+                            }`}>
                             {opt.label}
-                          </p>
+                          </span>
+                          {opt.subLabel && (
+                            <span className={`text-[10px] font-semibold leading-none text-center ${formSub.maintenance_type === opt.value ? 'text-teal-500' : 'text-slate-400'
+                              }`}>
+                              {opt.subLabel}
+                            </span>
+                          )}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={savingSub || !formSub.kelompok_id || !formSub.nama || !formSub.maintenance_type}
-                    className="flex items-center gap-5 px-13 py-8 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-full transition-all disabled:opacity-50 active:scale-95"
-                  >
-                    {savingSub ? <Loader2 size={13} className="animate-spin" /> : <Plus size={14} strokeWidth={3} />}
-                    Tambah Sub-Kelompok
-                  </button>
+                  <div className="pt-5">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={savingSub || !formSub.kelompok_id || !formSub.nama || !formSub.maintenance_type}
+                      className="w-max"
+                    >
+                      {savingSub ? <Loader2 size={13} className="animate-spin" /> : <Plus size={14} strokeWidth={3} />}
+                      Tambah Sub-Kelompok
+                    </Button>
+                  </div>
                 </form>
               </div>
 
