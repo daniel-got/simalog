@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { Table } from '../../components/ui/Table';
 import { cn } from '../../utils/cn';
 import { supabase } from '../../lib/supabase';
+import { formatNamaAset } from '../../utils/assetHelpers';
 
 export default function DetailAset() {
   const { id } = useParams();
@@ -190,7 +191,7 @@ export default function DetailAset() {
                 <img
                   src={assetDetail.foto_url}
                   alt={assetDetail.nama_aset}
-                  className="w-full h-48 object-cover rounded-xl border border-slate-100 shadow-sm bg-slate-50"
+                  className="w-full h-48 object-contain p-2 rounded-xl border border-slate-100 shadow-sm bg-slate-50"
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.src = 'https://placehold.co/400x300?text=Gambar+Tidak+Tersedia';
@@ -209,7 +210,7 @@ export default function DetailAset() {
                   {assetDetail.kode_aset || '—'}
                 </span>
                 <h2 className="text-lg font-black text-slate-800 leading-tight">
-                  {assetDetail.nama_aset}
+                  {formatNamaAset(assetDetail)}
                 </h2>
                 <div className="flex items-center gap-5 mt-5">
                   <span className="text-xs font-medium text-slate-500">

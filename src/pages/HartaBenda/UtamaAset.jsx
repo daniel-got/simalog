@@ -18,6 +18,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabase';
 import { StatCard } from '../../components/ui/Card';
+import { formatNamaAset } from '../../utils/assetHelpers';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -246,7 +247,7 @@ export default function UtamaAset() {
                   >
                     <div className="min-w-0 pr-3">
                       <p className="text-sm font-semibold text-slate-700 leading-tight truncate">
-                        {a.nama_aset}
+                        {formatNamaAset(a)}
                       </p>
                       <p className="text-[10px] font-mono text-slate-400 mt-2">
                         {a.id} · {a.lokasi_ruangan}
