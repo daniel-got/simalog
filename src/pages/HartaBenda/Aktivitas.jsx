@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Download, Pencil, Trash2, Search, ClipboardList, MapPin, UserCheck, Calendar, LayoutGrid, List } from 'lucide-react';
+import { Plus, Download, Pencil, Trash2, Search, ClipboardList, MapPin, UserCheck, Calendar, LayoutGrid, List, Activity, ArrowUpRight, ArrowDownLeft, Move, Users } from 'lucide-react';
 import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
+import { formatNamaAset } from '../../utils/assetHelpers';
 import { supabase } from '../../lib/supabase';
 import { Card } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -47,65 +48,98 @@ const getCleanKeterangan = (keterangan) => {
 function AktivitasCard({ item, asetObj, getAsetName, onEdit, onDelete, onUpdateStatus, parseStatus }) {
   const status = parseStatus(item.keterangan);
   
+  let IconComponent = Activity;
+  let colorClasses = "bg-slate-50 lg:bg-slate-50/50 lg:border-slate-100 text-slate-600";
+  
+  if (item.jenis_aktivitas === 'Dipinjam') {
+    IconComponent = ArrowUpRight;
+    colorClasses = "bg-blue-50 lg:bg-blue-50/50 lg:border-blue-100 text-blue-600";
+  } else if (item.jenis_aktivitas === 'Dikembalikan') {
+    IconComponent = ArrowDownLeft;
+    colorClasses = "bg-emerald-50 lg:bg-emerald-50/50 lg:border-emerald-100 text-emerald-600";
+  } else if (item.jenis_aktivitas === 'Dipindahkan') {
+    IconComponent = Move;
+    colorClasses = "bg-amber-50 lg:bg-amber-50/50 lg:border-amber-100 text-amber-600";
+  } else if (item.jenis_aktivitas === 'Mutasi Penanggung Jawab') {
+    IconComponent = Users;
+    colorClasses = "bg-purple-50 lg:bg-purple-50/50 lg:border-purple-100 text-purple-600";
+  }
+
   return (
-    <div className="bg-white p-13 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between overflow-hidden group hover:border-slate-200 transition-colors">
-      <div className="flex-1 min-w-0 flex flex-col w-full h-full">
-        <div className="flex justify-between items-start gap-3">
-          <span className="text-[10px] lg:text-xs font-bold text-slate-800 uppercase tracking-wide truncate">
-            {getAsetName(item.id_aset)}
-          </span>
+    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-row lg:flex-col items-center lg:items-stretch gap-4 overflow-hidden group hover:border-slate-200 transition-colors h-auto">
+      {/* Icon Area (Kecil di kiri pada mobile, Block besar di atas pada desktop) */}
+      <div className={`w-34 h-34 lg:w-full lg:h-24 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${colorClasses}`}>
+        <IconComponent size={15} strokeWidth={2.5} className="lg:w-8 lg:h-8 lg:opacity-75" />
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 min-w-0 flex flex-col gap-2 w-full">
+        {/* Baris 1: Judul Aset */}
+        <h3 className="text-[10px] lg:text-xs font-bold text-slate-800 uppercase tracking-wide line-clamp-2 leading-snug w-full">
+          {formatNamaAset(asetObj) || getAsetName(item.id_aset)}
+        </h3>
+        
+        {/* Baris 2: Kode BMN & Status/Aktivitas */}
+        <div className="flex items-center gap-2">
+          <p className="text-[9px] lg:text-[10px] text-slate-500 truncate mt-1">
+            {asetObj?.kode_bmn ? (
+              <><span>{asetObj.kode_bmn}</span> &middot; <span>{item.jenis_aktivitas}</span></>
+            ) : (
+              <span>{item.jenis_aktivitas}</span>
+            )}
+          </p>
           {status && (
-             <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider shrink-0 ${status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-               status === 'Disetujui' || status === 'Dikembalikan' || status === 'Selesai' ? 'bg-green-100 text-green-700' :
-               'bg-red-100 text-red-700'
+             <span className={`text-[9px] font-bold px-2 py-0.5 rounded border inline-block shrink-0 ${status === 'Pending' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+               status === 'Disetujui' || status === 'Dikembalikan' || status === 'Selesai' ? 'bg-green-100 text-green-700 border-green-200' :
+               'bg-red-100 text-red-700 border-red-200'
              }`}>
                {status}
              </span>
           )}
         </div>
         
-        <p className="text-[9px] lg:text-[10px] font-mono text-slate-400 mt-2 lg:mt-3 truncate">{asetObj?.kode_aset || '—'} · {asetObj?.lokasi_ruangan || '-'}</p>
-        
-        <div className="flex justify-between items-end mt-auto">
-          <div className="flex flex-col items-start gap-3 mt-5 lg:mt-8 pt-3 lg:pt-5 border-t border-slate-50 lg:border-slate-100 text-[9px] lg:text-[10px] font-medium text-slate-500 w-full">
-             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${item.jenis_aktivitas === 'Dipinjam' ? 'bg-blue-50 text-blue-600' :
-                 item.jenis_aktivitas === 'Dikembalikan' ? 'bg-emerald-50 text-emerald-600' :
-                 item.jenis_aktivitas === 'Mutasi Penanggung Jawab' ? 'bg-purple-50 text-purple-600' :
-                 item.jenis_aktivitas === 'Dipindahkan' ? 'bg-teal-50 text-teal-600' :
-                 'bg-slate-100 text-slate-600'
-               }`}>
-               {item.jenis_aktivitas}
-             </span>
-             <span className="flex flex-col gap-1.5 text-slate-500 mt-1">
-                <span className="flex items-center gap-2"><span className="mt-0.5">{item.tanggal}</span></span>
-                <span className="flex items-center gap-2 truncate"><span className="mt-0.5">{item.nama_staf || 'Tanpa staf'}</span></span>
-             </span>
+        {/* Baris 3: Lokasi & Tanggal (2 Baris dengan Ikon) */}
+        <div className="flex flex-col gap-1.5 mt-0.5">
+          <div className="text-[9px] lg:text-[10px] text-slate-500 font-medium flex items-center gap-1.5 truncate">
+            <MapPin size={11} className="text-slate-400 shrink-0" />
+            <span className="truncate">{asetObj?.lokasi_ruangan || 'Lokasi Tidak Diketahui'}</span>
+          </div>
+          <div className="text-[9px] lg:text-[10px] text-slate-500 font-medium flex items-center gap-1.5 truncate">
+            <Calendar size={11} className="text-slate-400 shrink-0" />
+            <span className="shrink-0">{item.tanggal}</span>
+          </div>
+        </div>
+
+        {/* Baris 4 (Footer): Pelaksana & Aksi */}
+        <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center w-full">
+          <div className="text-[9px] lg:text-[10px] font-medium text-slate-500 truncate max-w-[50%]">
+             <span className="truncate">{item.nama_staf || 'Tanpa Pelaksana'}</span>
           </div>
 
-          <div className="flex gap-5 mt-5 lg:mt-8 pt-3 lg:pt-5 shrink-0 flex-wrap justify-end">
-             {status === 'Pending' && (
-               <>
-                 <button onClick={() => onUpdateStatus(item, 'Setujui')} className="text-emerald-600 bg-emerald-50 px-3 py-1.5 hover:bg-emerald-100 rounded-lg text-[9px] font-bold" title="Setujui">✓</button>
-                 <button onClick={() => onUpdateStatus(item, 'Tolak')} className="text-red-600 bg-red-50 px-3 py-1.5 hover:bg-red-100 rounded-lg text-[9px] font-bold" title="Tolak">✕</button>
-               </>
-             )}
-             {status === 'Disetujui' && (
-               <button onClick={() => onUpdateStatus(item, 'Kembalikan')} className="text-blue-600 bg-blue-50 px-3 py-1.5 hover:bg-blue-100 rounded-lg text-[9px] font-bold">Kembalikan</button>
-             )}
-            <button 
-              onClick={onEdit}
-              className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
-              title="Edit"
-            >
-              <Pencil size={13} strokeWidth={2.5} />
-            </button>
-            <button 
-              onClick={onDelete}
-              className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
-              title="Hapus"
-            >
-              <Trash2 size={13} strokeWidth={2.5} />
-            </button>
+          <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+               {status === 'Pending' && (
+                 <>
+                   <button onClick={() => onUpdateStatus(item, 'Setujui')} className="text-emerald-600 bg-emerald-50 px-2.5 py-1.5 hover:bg-emerald-100 rounded-lg text-[9px] font-bold" title="Setujui">✓</button>
+                   <button onClick={() => onUpdateStatus(item, 'Tolak')} className="text-red-600 bg-red-50 px-2.5 py-1.5 hover:bg-red-100 rounded-lg text-[9px] font-bold" title="Tolak">✕</button>
+                 </>
+               )}
+               {status === 'Disetujui' && (
+                 <button onClick={() => onUpdateStatus(item, 'Kembalikan')} className="text-blue-600 bg-blue-50 px-2.5 py-1.5 hover:bg-blue-100 rounded-lg text-[9px] font-bold">Kembali</button>
+               )}
+              <button 
+                onClick={onEdit}
+                className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+                title="Edit"
+              >
+                <Pencil size={13} strokeWidth={2.5} />
+              </button>
+              <button 
+                onClick={onDelete}
+                className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+                title="Hapus"
+              >
+                <Trash2 size={13} strokeWidth={2.5} />
+              </button>
           </div>
         </div>
       </div>
@@ -117,7 +151,7 @@ export default function Aktivitas() {
   const { daftarAset, logAktivitas, addAktivitas, updateAktivitas, deleteAktivitas, fetchDataHartaBenda } = useHartaBendaStore();
 
   const [open, setOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('card');
+  const [viewMode, setViewMode] = useState('table');
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY);
 
@@ -364,16 +398,20 @@ export default function Aktivitas() {
           <p className="text-base font-bold text-slate-700 mb-13">
             {editId ? '✏️ Edit Catatan Aktivitas' : '📝 Catat Aktivitas Aset Baru'}
           </p>
-          <form onSubmit={handleSubmit} className="space-y-13">
-            <SearchableSelect
-              label="Pilih Aset"
-              required
-              options={asetOptions}
-              value={form.id_aset}
-              onChange={e => setForm({ ...form, id_aset: e.target.value })}
-            />
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Baris 1: Aset */}
+            <div className="w-full">
+              <SearchableSelect
+                label="Aset yang Terlibat"
+                required
+                options={asetOptions}
+                value={form.id_aset}
+                onChange={e => setForm({ ...form, id_aset: e.target.value })}
+              />
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
+            {/* Baris 2: Jenis Aktivitas & Tanggal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <Select
                 label="Jenis Aktivitas"
                 required
@@ -390,90 +428,67 @@ export default function Aktivitas() {
               />
             </div>
 
-            {/* FIELD KONDISIONAL BERDASARKAN JENIS AKTIVITAS */}
-
-            {/* 1. Dipindahkan */}
-            {form.jenis_aktivitas === 'Dipindahkan' && (
-              <div className="p-13 bg-teal-100/50 rounded-2xl border border-teal-200/80 space-y-13">
-                <div className="flex items-center gap-8 text-teal-800 font-semibold text-xs">
-                  <MapPin size={14} /> Informasi Pemindahan Lokasi
-                </div>
+            {/* Baris 3: Kondisional berdasarkan Jenis Aktivitas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Field Penanggung Jawab / Peminjam muncul di Dipinjam & Mutasi */}
+              {(form.jenis_aktivitas === 'Dipinjam' || form.jenis_aktivitas === 'Mutasi Penanggung Jawab') && (
                 <Input
-                  label="Lokasi Baru"
-                  placeholder="Masukkan lokasi / ruangan baru..."
+                  label="Penanggung Jawab / Peminjam"
+                  placeholder="Contoh: Nama Staf / Vendor..."
                   required
+                  value={form.jenis_aktivitas === 'Mutasi Penanggung Jawab' ? form.penanggung_jawab_baru : form.nama_staf}
+                  onChange={e => {
+                    if (form.jenis_aktivitas === 'Mutasi Penanggung Jawab') {
+                      setForm({ ...form, penanggung_jawab_baru: e.target.value });
+                    } else {
+                      setForm({ ...form, nama_staf: e.target.value });
+                    }
+                  }}
+                />
+              )}
+
+              {/* Field Lokasi Tujuan muncul di Dipindahkan & Mutasi */}
+              {(form.jenis_aktivitas === 'Dipindahkan' || form.jenis_aktivitas === 'Mutasi Penanggung Jawab') && (
+                <Input
+                  label="Ruangan / Lokasi Tujuan Baru"
+                  placeholder="Contoh: Ruang Rapat Lt 2..."
+                  required={form.jenis_aktivitas === 'Dipindahkan'}
                   value={form.lokasi_baru}
                   onChange={e => setForm({ ...form, lokasi_baru: e.target.value })}
                 />
-              </div>
-            )}
+              )}
 
-            {/* 2. Mutasi Penanggung Jawab */}
-            {form.jenis_aktivitas === 'Mutasi Penanggung Jawab' && (
-              <div className="p-13 bg-purple-50/60 rounded-2xl border border-purple-100 space-y-13">
-                <div className="flex items-center gap-8 text-purple-800 font-semibold text-xs">
-                  <UserCheck size={14} /> Informasi Mutasi Penanggung Jawab
+              {/* Field Tanggal Kembali muncul HANYA saat Dipinjam */}
+              {form.jenis_aktivitas === 'Dipinjam' && (
+                <Input
+                  label="Rencana Tanggal Pengembalian"
+                  type="date"
+                  required
+                  value={form.tanggal_rencana_kembali}
+                  onChange={e => setForm({ ...form, tanggal_rencana_kembali: e.target.value })}
+                />
+              )}
+              
+              {form.jenis_aktivitas === 'Dikembalikan' && (
+                <div className="col-span-1 md:col-span-2 p-5 bg-emerald-50 rounded-xl border border-emerald-100 text-xs text-emerald-800 font-medium">
+                  Informasi: Aset akan ditandai kembali ke lokasi/penanggung jawab sebelumnya.
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
-                  <Input
-                    label="Penanggung Jawab Baru"
-                    placeholder="Nama penanggung jawab baru..."
-                    required
-                    value={form.penanggung_jawab_baru}
-                    onChange={e => setForm({ ...form, penanggung_jawab_baru: e.target.value })}
-                  />
-                  <Input
-                    label="Lokasi Baru (Opsional)"
-                    placeholder="Lokasi baru jika ada..."
-                    value={form.lokasi_baru}
-                    onChange={e => setForm({ ...form, lokasi_baru: e.target.value })}
-                  />
-                </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* 3. Dipinjam */}
-            {form.jenis_aktivitas === 'Dipinjam' && (
-              <div className="p-13 bg-blue-50/60 rounded-2xl border border-blue-100 space-y-13">
-                <div className="flex items-center gap-8 text-blue-800 font-semibold text-xs">
-                  <Calendar size={14} /> Detail Peminjaman
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-13">
-                  <Input
-                    label="Nama Peminjam / Staf"
-                    placeholder="Masukkan nama peminjam..."
-                    required
-                    value={form.nama_staf}
-                    onChange={e => setForm({ ...form, nama_staf: e.target.value })}
-                  />
-                  <Input
-                    label="Rencana Tanggal Kembali"
-                    type="date"
-                    required
-                    value={form.tanggal_rencana_kembali}
-                    onChange={e => setForm({ ...form, tanggal_rencana_kembali: e.target.value })}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* 4. Dikembalikan */}
-            {form.jenis_aktivitas === 'Dikembalikan' && (
-              <div className="p-13 bg-emerald-50 rounded-2xl border border-emerald-100 text-xs text-emerald-800 font-medium">
-                Aset akan ditandai kembali ke lokasi/penanggung jawab awal.
-              </div>
-            )}
-
-            <Input
-              label="Keterangan"
-              placeholder="Catatan tambahan (opsional)..."
-              value={form.keterangan}
-              onChange={e => setForm({ ...form, keterangan: e.target.value })}
-            />
+            {/* Baris 4: Keterangan Tambahan */}
+            <div className="w-full pt-3 border-t border-teal-100">
+              <Input
+                label="Keterangan / Catatan Tambahan"
+                placeholder="Detail aktivitas atau kondisi barang..."
+                value={form.keterangan}
+                onChange={e => setForm({ ...form, keterangan: e.target.value })}
+              />
+            </div>
 
             <div className="flex justify-end gap-8 pt-5">
               <Button type="button" variant="ghost" size="sm" onClick={closeForm}>Batal</Button>
-              <Button type="submit" size="sm">Simpan</Button>
+              <Button type="submit" size="sm">Simpan Catatan</Button>
             </div>
           </form>
         </Card>
@@ -544,43 +559,53 @@ export default function Aktivitas() {
         </div>
       ) : (
         <div className="space-y-21">
-          <Table headers={['Tanggal', 'Aset', 'Jenis / Status', 'Penanggung Jawab', 'Rencana Kembali', 'Keterangan', 'Aksi']}>
+          <Table headers={['Tanggal', 'Aset', 'Jenis Aktivitas', 'Penanggung Jawab', 'Keterangan / Perubahan', 'Aksi']}>
             {paged.map(a => {
               const status = parseStatus(a.keterangan);
+              const asetObj = daftarAset.find(asset => String(asset.id) === String(a.id_aset));
+              
+              // Menggabungkan informasi tambahan ke dalam kolom keterangan
+              let infoTambahan = getCleanKeterangan(a.keterangan);
+              if (a.jenis_aktivitas === 'Dipinjam' && a.tanggal_rencana_kembali) {
+                infoTambahan = `Rencana Kembali: ${a.tanggal_rencana_kembali} | ${infoTambahan}`;
+              }
+
               return (
                 <tr key={a.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">{a.tanggal}</td>
-                  <td className="px-13 py-13 text-sm font-semibold text-slate-700">{getAsetName(a.id_aset)}</td>
                   <td className="px-13 py-13">
-                    <div className="flex flex-col gap-3 items-start">
-                      <span className={`text-[10px] font-bold px-5 py-2 rounded-md ${a.jenis_aktivitas === 'Dipinjam' ? 'bg-blue-50 text-blue-600' :
-                          a.jenis_aktivitas === 'Dikembalikan' ? 'bg-emerald-50 text-emerald-600' :
-                            a.jenis_aktivitas === 'Mutasi Penanggung Jawab' ? 'bg-purple-50 text-purple-600' :
-                              a.jenis_aktivitas === 'Dipindahkan' ? 'bg-teal-50 text-teal-600' :
-                                'bg-slate-100 text-slate-600'
-                        }`}>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-slate-800">{getAsetName(a.id_aset)}</span>
+                      <span className="text-[10px] text-slate-500 font-mono mt-0.5">{asetObj?.kode_bmn || '-'}</span>
+                    </div>
+                  </td>
+                  <td className="px-13 py-13">
+                    <div className="flex flex-col gap-2 items-start">
+                      <span className={`text-[10px] font-bold px-3 py-1.5 rounded-md ${
+                        a.jenis_aktivitas === 'Dipinjam' ? 'bg-blue-100 text-blue-700' :
+                        a.jenis_aktivitas === 'Dikembalikan' ? 'bg-emerald-100 text-emerald-700' :
+                        a.jenis_aktivitas === 'Mutasi Penanggung Jawab' ? 'bg-purple-100 text-purple-700' :
+                        a.jenis_aktivitas === 'Dipindahkan' ? 'bg-amber-100 text-amber-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
                         {a.jenis_aktivitas}
                       </span>
                       {status && (
-                        <span className={`text-[9px] font-black px-5 py-2 rounded uppercase tracking-wider ${status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-                            status === 'Disetujui' || status === 'Dikembalikan' || status === 'Selesai' ? 'bg-green-100 text-green-700' :
-                              'bg-red-100 text-red-700'
+                        <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider ${status === 'Pending' ? 'bg-amber-50 text-amber-600' :
+                            status === 'Disetujui' || status === 'Dikembalikan' || status === 'Selesai' ? 'bg-green-50 text-green-600' :
+                              'bg-red-50 text-red-600'
                           }`}>
                           {status}
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-13 py-13 text-xs text-slate-600 font-medium">
+                  <td className="px-13 py-13 text-xs text-slate-700 font-medium">
                     {a.nama_staf || '-'}
                   </td>
-                  <td className="px-13 py-13 text-xs text-slate-500 whitespace-nowrap">
-                    {a.jenis_aktivitas === 'Dipinjam'
-                      ? (a.tanggal_rencana_kembali || '-')
-                      : <span className="text-slate-300">—</span>
-                    }
+                  <td className="px-13 py-13 text-xs text-slate-600 max-w-[200px] truncate" title={infoTambahan}>
+                    {infoTambahan}
                   </td>
-                  <td className="px-13 py-13 text-xs text-slate-500 max-w-[180px] truncate">{getCleanKeterangan(a.keterangan)}</td>
                   <td className="px-13 py-13">
                       <div className="flex items-center gap-5">
                         {/* Action Buttons */}
@@ -594,7 +619,7 @@ export default function Aktivitas() {
                           <button onClick={() => handleUpdateStatus(a, 'Kembalikan')} className="text-blue-600 p-5 hover:bg-blue-50 rounded-lg text-xs font-bold">Selesaikan / Kembalikan</button>
                         )}
 
-                        <div className="flex gap-5 items-center ml-auto shrink-0">
+                        <div className="flex gap-2 items-center ml-auto shrink-0">
                           <button onClick={() => handleEdit(a)}
                             className="w-21 h-21 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center hover:bg-teal-100 transition-colors" title="Edit">
                             <Pencil size={12} strokeWidth={2.5} />

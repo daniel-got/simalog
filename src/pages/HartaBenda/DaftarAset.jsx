@@ -27,6 +27,7 @@ import { Input, Select } from '../../components/ui/Input';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 import ModalKategoriAset from './ModalKategoriAset';
 import { cn } from '../../utils/cn';
+import { formatNamaAset } from '../../utils/assetHelpers';
 import useHartaBendaStore from '../../store/HartaBenda/useHartaBendaStore';
 import { supabase } from '../../lib/supabase';
 
@@ -852,12 +853,12 @@ export default function DaftarAset() {
                 className="bg-white p-13 lg:p-0 rounded-2xl border border-slate-100 shadow-sm flex flex-row lg:flex-col gap-13 lg:gap-0 items-center lg:items-stretch overflow-hidden group hover:shadow-md transition-shadow"
               >
                 {/* Container Gambar (89px di mobile, full width x tinggi 144px di desktop) */}
-                <div className="w-89 h-89 lg:w-full lg:h-36 bg-slate-50 rounded-xl lg:rounded-none lg:border-0 lg:border-b border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                <div className="w-89 h-89 lg:w-full lg:h-56 bg-slate-50 rounded-xl lg:rounded-none lg:border-0 lg:border-b border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
                   {a.foto_url ? (
                     <img
                       src={a.foto_url}
                       alt={a.nama_aset}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 p-2"
                     />
                   ) : (
                     <ImageIcon size={21} className="text-slate-300" />
@@ -887,7 +888,7 @@ export default function DaftarAset() {
                       onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
                       className="text-sm font-bold text-slate-800 leading-tight truncate mb-2 cursor-pointer hover:text-teal-600 transition-colors"
                     >
-                      {a.nama_aset}
+                      {formatNamaAset(a)}
                     </h3>
 
                     {/* Kategori / Kelompok */}
@@ -901,9 +902,9 @@ export default function DaftarAset() {
                       )}
                     </p>
 
-                    {/* Kode Aset / SKU (Desktop Only) */}
-                    <h4 className="hidden lg:block text-[10px] font-mono text-slate-400 truncate mt-2">
-                      {a.kode_aset || "—"}
+                    {/* Kode BMN & NUP */}
+                    <h4 className="text-[10px] font-mono text-slate-500 truncate mt-3 mb-2 tracking-wide">
+                      {a.kode_bmn || a.nup ? `${a.kode_bmn || ''}${a.kode_bmn && a.nup ? '-' : ''}${a.nup || ''}` : "-"}
                     </h4>
                   </div>
 
@@ -990,7 +991,7 @@ export default function DaftarAset() {
                     onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
                     className="text-xs font-bold text-slate-800 cursor-pointer hover:text-teal-600 transition-colors"
                   >
-                    {a.nama_aset}
+                    {formatNamaAset(a)}
                   </p>
                   <p className="font-mono text-[10px] text-teal-600 font-bold mt-0.5">
                     {a.kode_aset || "—"}
