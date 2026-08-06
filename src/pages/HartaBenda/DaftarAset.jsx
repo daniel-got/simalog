@@ -853,12 +853,12 @@ export default function DaftarAset() {
                 className="bg-white p-13 lg:p-0 rounded-2xl border border-slate-100 shadow-sm flex flex-row lg:flex-col gap-13 lg:gap-0 items-center lg:items-stretch overflow-hidden group hover:shadow-md transition-shadow"
               >
                 {/* Container Gambar (89px di mobile, full width x tinggi 144px di desktop) */}
-                <div className="w-89 h-89 lg:w-full lg:h-56 bg-slate-50 rounded-xl lg:rounded-none lg:border-0 lg:border-b border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                <div className="w-89 h-89 lg:w-full lg:h-36 bg-slate-50 rounded-xl lg:rounded-none lg:border-0 lg:border-b border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
                   {a.foto_url ? (
                     <img
                       src={a.foto_url}
                       alt={a.nama_aset}
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 p-2"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
                     <ImageIcon size={21} className="text-slate-300" />
@@ -870,12 +870,12 @@ export default function DaftarAset() {
                   <div className="flex flex-col">
                     {/* Header Mobile: Kode & Kondisi */}
                     <div className="flex justify-between items-start gap-5 lg:hidden mb-2">
-                      <span className="text-[9px] font-mono bg-teal-50 text-teal-700 px-5 py-2 rounded-md font-bold uppercase tracking-wider truncate">
+                      <span className="text-[10px] font-mono bg-teal-50 text-teal-700 px-5 py-2 rounded-md font-bold uppercase tracking-wider truncate">
                         {a.kode_aset || "—"}
                       </span>
                       <span
                         className={cn(
-                          "text-[9px] font-bold px-2 py-1 rounded-md shrink-0",
+                          "text-[10px] font-bold px-5 py-2 rounded-md shrink-0",
                           kondisiBadge(a.status_kondisi),
                         )}
                       >
@@ -915,7 +915,7 @@ export default function DaftarAset() {
                         Kondisi:{" "}
                         <span
                           className={cn(
-                            "font-bold px-1.5 py-0.2 rounded text-[9px]",
+                            "font-bold px-5 py-2 rounded text-[10px]",
                             kondisiBadge(a.status_kondisi),
                           )}
                         >
@@ -933,7 +933,7 @@ export default function DaftarAset() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
-                        className="text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors px-3 py-1.5 flex items-center justify-center text-[10px] font-bold"
+                        className="text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors px-8 py-5 flex items-center justify-center text-[10px] font-bold"
                         title="Detail"
                       >
                         Detail
@@ -986,7 +986,7 @@ export default function DaftarAset() {
           >
             {paged.map((a) => (
               <tr key={a.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-3">
+                <td className="px-13 py-13">
                   <p
                     onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
                     className="text-xs font-bold text-slate-800 cursor-pointer hover:text-teal-600 transition-colors"
@@ -997,7 +997,7 @@ export default function DaftarAset() {
                     {a.kode_aset || "—"}
                   </p>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-13 py-13">
                   <p className="text-xs font-medium text-slate-700">
                     {a.kelompok?.nama || "—"}
                   </p>
@@ -1005,7 +1005,7 @@ export default function DaftarAset() {
                     {a.sub_kelompok?.nama || ""}
                   </p>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-13 py-13">
                   <p className="text-xs font-medium text-slate-700">
                     {a.merek_tipe || "—"}
                   </p>
@@ -1013,7 +1013,7 @@ export default function DaftarAset() {
                     {a.nomor_seri_plat || "—"}
                   </p>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-13 py-13">
                   <p className="text-xs text-slate-700">
                     {a.lokasi_ruangan || "—"}
                   </p>
@@ -1023,20 +1023,20 @@ export default function DaftarAset() {
                     </p>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-13 py-13">
                   <span
                     className={cn(
-                      "text-[9px] font-bold px-2 py-1 rounded-md",
+                      "text-[10px] font-bold px-5 py-2 rounded-md",
                       kondisiBadge(a.status_kondisi),
                     )}
                   >
                     {a.status_kondisi}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs font-bold text-emerald-600">
+                <td className="px-13 py-13 font-mono text-xs font-bold text-emerald-600">
                   {formatRupiah(a.harga_beli)}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-13 py-13">
                   <div className="flex items-center gap-5">
                     <button
                       onClick={() => navigate(`/harta-benda/aset/${a.id}`)}
