@@ -173,11 +173,11 @@ export default function LaporRusakGuest() {
     e.preventDefault();
 
     if (!form.id_aset) {
-      alert('Pilih aset terlebih dahulu!');
+      toast.warning('Pilih aset terlebih dahulu!');
       return;
     }
     if (!form.deskripsi) {
-      alert('Deskripsi kerusakan wajib diisi!');
+      toast.warning('Deskripsi kerusakan wajib diisi!');
       return;
     }
 
@@ -202,7 +202,7 @@ export default function LaporRusakGuest() {
     setLoading(false);
 
     if (error) {
-      alert('Gagal mengirim laporan: ' + error.message);
+      toast.error('Gagal mengirim laporan: ' + error.message);
       return;
     }
 
@@ -230,9 +230,10 @@ export default function LaporRusakGuest() {
     if (!itemToDelete) return;
     const { error } = await supabase.from('laporan_kerusakan').delete().eq('id', itemToDelete.id);
     if (error) {
-      alert('Gagal membatalkan: ' + error.message);
+      toast.error('Gagal membatalkan: ' + error.message);
       return;
     }
+    toast.success('Laporan kerusakan berhasil dibatalkan!');
     setDaftarLaporan(prev => prev.filter(r => r.id !== itemToDelete.id));
     setIsDeleteModalOpen(false);
     setItemToDelete(null);

@@ -179,15 +179,15 @@ export default function PinjamAsetGuest() {
     e.preventDefault();
 
     if (!form.id_aset) {
-      alert('Pilih aset terlebih dahulu!');
+      toast.warning('Pilih aset terlebih dahulu!');
       return;
     }
     if (!form.tanggal_rencana_kembali) {
-      alert('Tanggal rencana kembali wajib diisi!');
+      toast.warning('Tanggal rencana kembali wajib diisi!');
       return;
     }
     if (form.tanggal_rencana_kembali < form.tanggal) {
-      alert('Tanggal kembali tidak boleh kurang dari tanggal pinjam!');
+      toast.warning('Tanggal kembali tidak boleh kurang dari tanggal pinjam!');
       return;
     }
 
@@ -212,7 +212,7 @@ export default function PinjamAsetGuest() {
     setLoading(false);
 
     if (error) {
-      alert('Gagal mengirim pengajuan: ' + error.message);
+      toast.error('Gagal mengirim pengajuan: ' + error.message);
       return;
     }
 
@@ -243,9 +243,10 @@ export default function PinjamAsetGuest() {
     if (!itemToDelete) return;
     const { error } = await supabase.from('peminjaman_aset').delete().eq('id', itemToDelete.id);
     if (error) {
-      alert('Gagal membatalkan: ' + error.message);
+      toast.error('Gagal membatalkan: ' + error.message);
       return;
     }
+    toast.success('Pengajuan berhasil dibatalkan!');
     setDaftarPinjam(prev => prev.filter(p => p.id !== itemToDelete.id));
     setIsDeleteModalOpen(false);
     setItemToDelete(null);

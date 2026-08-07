@@ -11,6 +11,7 @@ import Pagination from '../../components/ui/Pagination';
 import { cn } from '../../utils/cn';
 import { supabase } from '../../lib/supabase';
 import { formatNamaAset } from '../../utils/assetHelpers';
+import { useToast } from '../../components/ui/Toast';
 
 const EMPTY = {
   id_aset: '',
@@ -27,10 +28,10 @@ const EMPTY = {
 function PerawatanCard({ item, asetObj, formatRupiah, onEdit, onDelete, onViewDetail, statusBadgeStyle }) {
   const isServisRutin = item.kategori_biaya === 'Servis Rutin';
   const kondisiAset = item.kondisi_setelah_perawatan || asetObj?.status_kondisi || 'Baik';
-  
+
   return (
     <div className="bg-white p-13 lg:p-0 rounded-2xl border border-slate-100 shadow-sm flex flex-row lg:flex-col items-center lg:items-stretch gap-13 lg:gap-0 overflow-hidden group hover:border-slate-200 transition-colors">
-      <div 
+      <div
         className={cn(
           "w-34 h-34 lg:w-full lg:h-48 rounded-xl lg:rounded-t-2xl flex items-center justify-center flex-shrink-0 transition-colors relative bg-slate-50 overflow-hidden",
           !asetObj?.foto_url && (isServisRutin ? "bg-teal-50 text-teal-600" : "bg-rose-50 text-rose-600"),
@@ -43,18 +44,18 @@ function PerawatanCard({ item, asetObj, formatRupiah, onEdit, onDelete, onViewDe
         ) : (
           <Wrench size={24} strokeWidth={2} className="lg:w-8 lg:h-8 opacity-50" />
         )}
-        <span className={cn("absolute top-3 right-3 hidden lg:block text-[9px] font-bold px-2 py-1 rounded shadow-sm border", isServisRutin ? 'bg-teal-50 text-teal-700 border-teal-100' : 'bg-rose-50 text-rose-600 border-rose-100')}>
+        <span className={cn("absolute top-[0.5rem] right-[0.5rem] hidden lg:block text-[9px] font-bold px-2 py-1 rounded shadow-sm border", isServisRutin ? 'bg-teal-50 text-teal-700 border-teal-100' : 'bg-rose-50 text-rose-600 border-rose-100')}>
           {item.kategori_biaya}
         </span>
       </div>
-      
+
       <div className="flex-1 min-w-0 flex flex-col justify-between lg:p-13 w-full h-full py-2 lg:py-0">
-        
+
         {/* Judul Aset (Full Width, Bold) */}
         <h3 className="text-[10px] lg:text-xs font-bold text-slate-800 uppercase tracking-wide line-clamp-2 leading-snug w-full">
           {formatNamaAset(asetObj) || 'Aset Tidak Ditemukan'}
         </h3>
-        
+
         {/* Deskripsi (Muted, max 2 baris) */}
         <p className="text-[9px] lg:text-[10px] text-slate-500 mt-2 line-clamp-2 min-h-[2.5rem]">
           {item.keterangan || 'Tidak ada deskripsi pekerjaan.'}
@@ -62,20 +63,20 @@ function PerawatanCard({ item, asetObj, formatRupiah, onEdit, onDelete, onViewDe
 
         {/* Badge Kondisi */}
         <div className="mt-2">
-           <span className={cn('text-[9px] font-bold px-2 py-0.5 rounded border inline-block', statusBadgeStyle(kondisiAset))}>
-             {kondisiAset}
-           </span>
+          <span className={cn('text-[9px] font-bold px-2 py-0.5 rounded border inline-block', statusBadgeStyle(kondisiAset))}>
+            {kondisiAset}
+          </span>
         </div>
-        
+
         {/* Biaya Perawatan */}
         <div className="mt-3 text-xs lg:text-sm">
-           <span className="text-[9px] lg:text-[10px] font-semibold text-slate-400">Biaya: </span>
-           <span className="font-bold text-emerald-700">{formatRupiah(item.total_biaya)}</span>
+          <span className="text-[9px] lg:text-[10px] font-semibold text-slate-400">Biaya: </span>
+          <span className="font-bold text-emerald-700">{formatRupiah(item.total_biaya)}</span>
         </div>
-        
+
         {/* Footer (Tanggal, Pelaksana, Tombol) */}
-        <div className="mt-auto flex justify-between items-end">
-          <div className="flex flex-row lg:flex-col items-center lg:items-start gap-8 lg:gap-3 mt-5 lg:mt-6 pt-3 lg:pt-5 border-t border-slate-50 lg:border-slate-100 text-[9px] lg:text-[10px] font-medium text-slate-500 w-full">
+        <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center w-full">
+          <div className="flex flex-col text-[9px] lg:text-[10px] font-medium text-slate-500 truncate max-w-[50%] gap-0.5">
             <span className="truncate">
               {item.tanggal}
             </span>
@@ -84,26 +85,26 @@ function PerawatanCard({ item, asetObj, formatRupiah, onEdit, onDelete, onViewDe
             </span>
           </div>
 
-          <div className="flex gap-5 mt-5 lg:mt-6 pt-3 lg:pt-5 shrink-0 border-t border-slate-50 lg:border-slate-100">
+          <div className="flex gap-2 shrink-0 flex-wrap justify-end">
             {item.bukti_kwitansi_url && (
-              <button 
+              <button
                 onClick={onViewDetail}
-                className="text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+                className="text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors p-5 flex items-center justify-center"
                 title="Lihat Bukti Kwitansi"
               >
                 <FileText size={13} strokeWidth={2.5} />
               </button>
             )}
-            <button 
+            <button
               onClick={onEdit}
-              className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+              className="text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors p-5 flex items-center justify-center"
               title="Edit"
             >
               <Pencil size={13} strokeWidth={2.5} />
             </button>
-            <button 
+            <button
               onClick={onDelete}
-              className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center" 
+              className="text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors p-5 flex items-center justify-center"
               title="Hapus"
             >
               <Trash2 size={13} strokeWidth={2.5} />
@@ -117,6 +118,7 @@ function PerawatanCard({ item, asetObj, formatRupiah, onEdit, onDelete, onViewDe
 
 export default function Perawatan() {
   const { aset, logPerawatan, addPerawatan, updatePerawatan, deletePerawatan, fetchDataHartaBenda } = useHartaBendaStore();
+  const toast = useToast();
 
   const dataAsetAman = aset || [];
 
@@ -197,17 +199,17 @@ export default function Perawatan() {
     e.preventDefault();
 
     if (!form.id_aset) {
-      alert('Silakan pilih unit aset terlebih dahulu.');
+      toast.warning('Silakan pilih unit aset terlebih dahulu.');
       return;
     }
 
     if (!form.kategori_biaya) {
-      alert('Silakan pilih jenis perawatan.');
+      toast.warning('Silakan pilih jenis perawatan.');
       return;
     }
 
     if (form.kategori_biaya === 'Servis Rutin' && selectedMaintenanceType === 'km' && (!form.km_saat_servis || Number(form.km_saat_servis) < 0)) {
-      alert('Nilai KM saat servis wajib diisi!');
+      toast.warning('Nilai KM saat servis wajib diisi!');
       return;
     }
 
@@ -221,7 +223,7 @@ export default function Perawatan() {
         .upload(`perawatan/${fileName}`, buktiKwitansiFile);
 
       if (uploadError) {
-        alert('Gagal mengupload lampiran. Error: ' + uploadError.message);
+        toast.error('Gagal mengupload lampiran. Error: ' + uploadError.message);
       } else if (uploadData) {
         const { data: urlData } = supabase.storage.from('images').getPublicUrl(`perawatan/${fileName}`);
         uploadedUrl = urlData?.publicUrl || '';
@@ -279,8 +281,11 @@ export default function Perawatan() {
         console.error('Update asset status catch error:', err);
       }
 
+      toast.success(editId ? 'Catatan perawatan berhasil diperbarui!' : 'Catatan perawatan berhasil ditambahkan!');
       await fetchDataHartaBenda();
       closeForm();
+    } else {
+      toast.error('Gagal menyimpan catatan perawatan.');
     }
   };
 
@@ -309,7 +314,12 @@ export default function Perawatan() {
 
   const handleConfirmDelete = async () => {
     if (itemToDelete) {
-      await deletePerawatan(itemToDelete.id);
+      const ok = await deletePerawatan(itemToDelete.id);
+      if (ok) {
+        toast.success(`Catatan perawatan berhasil dihapus!`);
+      } else {
+        toast.error('Gagal menghapus catatan perawatan.');
+      }
       await fetchDataHartaBenda();
       setIsDeleteModalOpen(false);
       setItemToDelete(null);
@@ -719,7 +729,7 @@ export default function Perawatan() {
       {/* Modal Detail Perawatan */}
       {detailModalOpen && selectedDetail && (
         <div className="fixed inset-0 z-[8000] flex items-center justify-center p-4">
-          <div 
+          <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
             onClick={() => setDetailModalOpen(false)}
           />
@@ -733,7 +743,7 @@ export default function Perawatan() {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="pl-6 py-6 pr-4 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8">
                 {/* Aset Info - Full Width */}
@@ -742,7 +752,7 @@ export default function Perawatan() {
                   <p className="text-sm font-semibold text-slate-800">{formatNamaAset(getAsetObject(selectedDetail.id_aset))}</p>
                   <p className="text-xs text-slate-500 mt-1 font-mono">{getAsetObject(selectedDetail.id_aset)?.kode_aset}</p>
                 </div>
-                
+
                 {/* Jenis & Kondisi */}
                 <div className="col-span-1">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Jenis & Kondisi</p>
@@ -755,7 +765,7 @@ export default function Perawatan() {
                     </span>
                   </div>
                 </div>
-                
+
                 {/* Tanggal & Pelaksana */}
                 <div className="col-span-1">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tanggal & Pelaksana</p>
@@ -774,13 +784,13 @@ export default function Perawatan() {
                     {selectedDetail.keterangan || '-'}
                   </p>
                 </div>
-                
+
                 {/* Total Biaya */}
                 <div className="col-span-1 md:col-span-2 border-t border-slate-100 pt-4">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Biaya Perawatan</p>
                   <p className="text-base font-black text-emerald-600">{formatRupiah(selectedDetail.total_biaya)}</p>
                 </div>
-                
+
                 {/* Kwitansi */}
                 <div className="col-span-1 md:col-span-2 border-t border-slate-100 pt-4">
                   <div className="flex items-center justify-between mb-3">
@@ -791,7 +801,7 @@ export default function Perawatan() {
                       </a>
                     )}
                   </div>
-                  
+
                   {(() => {
                     const url = selectedDetail.bukti_kwitansi_url;
                     if (!url) {
@@ -805,15 +815,15 @@ export default function Perawatan() {
                     }
 
                     const isValidUrl = url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:');
-                    
+
                     if (!isValidUrl || imgError) {
                       // ERROR STATE
                       return (
                         <div className="rounded-xl border border-rose-100 border-dashed bg-rose-50/50 flex flex-col items-center justify-center py-6 text-rose-500">
                           <FileText size={24} className="mb-2 text-rose-300 opacity-80" strokeWidth={1.5} />
                           <p className="text-[10px] font-semibold text-rose-600">File gagal dimuat (Tautan Rusak)</p>
-                          <button 
-                            onClick={() => { setDetailModalOpen(false); handleEdit(selectedDetail); }} 
+                          <button
+                            onClick={() => { setDetailModalOpen(false); handleEdit(selectedDetail); }}
                             className="mt-2 text-[9px] font-bold text-rose-700 bg-rose-100 px-3 py-1.5 rounded-md hover:bg-rose-200 transition-colors"
                           >
                             Unggah Ulang Kwitansi
@@ -828,11 +838,11 @@ export default function Perawatan() {
                       // IMAGE PREVIEW
                       return (
                         <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center p-4 py-6 max-h-[300px]">
-                          <img 
-                            src={url} 
-                            alt="Kwitansi" 
+                          <img
+                            src={url}
+                            alt="Kwitansi"
                             className="max-w-full max-h-full object-contain rounded"
-                            onError={() => setImgError(true)} 
+                            onError={() => setImgError(true)}
                           />
                         </div>
                       );
@@ -843,10 +853,10 @@ export default function Perawatan() {
                       <div className="rounded-xl border border-slate-200 border-dashed bg-slate-50 flex flex-col items-center justify-center py-6 text-slate-500">
                         <FileText size={28} className="mb-2 text-slate-300" strokeWidth={1.5} />
                         <p className="text-xs font-bold text-slate-600">Lampiran berupa dokumen/PDF</p>
-                        <a 
-                          href={url} 
-                          target="_blank" 
-                          rel="noreferrer" 
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
                           className="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-md transition-colors"
                         >
                           Lihat Dokumen Kwitansi (PDF)
