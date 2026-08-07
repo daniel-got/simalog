@@ -169,7 +169,7 @@ export default function Aktivitas() {
 
   // Format Tampilan Pilihan Aset: {nama_aset} — {id} — {lokasi_ruangan}
   const asetOptions = daftarAset.map(a => ({
-    label: `${a.nama_aset} — ${a.id} — ${a.lokasi_ruangan || 'Tanpa Lokasi'}`,
+    label: `${a.nama_aset} - NUP ${a.nup || '-'} - ${a.lokasi_ruangan || '-'}`,
     value: a.id,
   }));
 

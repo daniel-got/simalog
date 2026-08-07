@@ -164,8 +164,8 @@ export default function PinjamAsetGuest() {
   }, [aset, latestActivity]);
 
   const asetOptions = useMemo(() => {
-    return availableAset.map(a => ({
-      label: `${a.nama_aset} — ${a.kode_aset || a.id} (${a.lokasi_ruangan || 'Tanpa Lokasi'})`,
+    return availableAset.map((a) => ({
+      label: `${a.nama_aset} - NUP ${a.nup || '-'} - ${a.lokasi_ruangan || '-'}`,
       value: a.id,
     }));
   }, [availableAset]);

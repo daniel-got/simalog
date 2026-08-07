@@ -158,8 +158,8 @@ export default function LaporRusakGuest() {
   }, [fetchDaftarLaporan]);
 
   const asetOptions = useMemo(() => {
-    return (aset || []).map(a => ({
-      label: `${a.nama_aset} — ${a.kode_aset || a.id} (${a.lokasi_ruangan || 'Tanpa Lokasi'})`,
+    return (aset || []).map((a) => ({
+      label: `${a.nama_aset} - NUP ${a.nup || '-'} - ${a.lokasi_ruangan || '-'}`,
       value: a.id,
     }));
   }, [aset]);
