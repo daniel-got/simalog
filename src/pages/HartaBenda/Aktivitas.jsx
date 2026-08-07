@@ -10,6 +10,7 @@ import { Table } from '../../components/ui/Table';
 import { Input, Select } from '../../components/ui/Input';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 import Pagination from '../../components/ui/Pagination';
+import { useToast } from '../../components/ui/Toast';
 
 const EMPTY = {
   id_aset: '',
@@ -149,6 +150,7 @@ function AktivitasCard({ item, asetObj, getAsetName, onEdit, onDelete, onUpdateS
 
 export default function Aktivitas() {
   const { daftarAset, logAktivitas, addAktivitas, updateAktivitas, deleteAktivitas, fetchDataHartaBenda } = useHartaBendaStore();
+  const toast = useToast();
 
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState('table');
@@ -181,32 +183,32 @@ export default function Aktivitas() {
     e.preventDefault();
 
     if (!form.id_aset) {
-      alert('Silakan pilih aset terlebih dahulu.');
+      toast.warning('Silakan pilih aset terlebih dahulu.');
       return;
     }
     if (!form.jenis_aktivitas) {
-      alert('Silakan pilih jenis aktivitas.');
+      toast.warning('Silakan pilih jenis aktivitas.');
       return;
     }
 
     // Validasi Field Kondisional
     if (form.jenis_aktivitas === 'Dipindahkan') {
       if (!form.lokasi_baru) {
-        alert('Lokasi baru wajib diisi untuk aktivitas Dipindahkan.');
+        toast.warning('Lokasi baru wajib diisi untuk aktivitas Dipindahkan.');
         return;
       }
     } else if (form.jenis_aktivitas === 'Mutasi Penanggung Jawab') {
       if (!form.penanggung_jawab_baru) {
-        alert('Penanggung jawab baru wajib diisi untuk Mutasi.');
+        toast.warning('Penanggung jawab baru wajib diisi untuk Mutasi.');
         return;
       }
     } else if (form.jenis_aktivitas === 'Dipinjam') {
       if (!form.nama_staf) {
-        alert('Nama peminjam/staf wajib diisi.');
+        toast.warning('Nama peminjam/staf wajib diisi.');
         return;
       }
       if (!form.tanggal_rencana_kembali) {
-        alert('Rencana tanggal kembali wajib diisi.');
+        toast.warning('Rencana tanggal kembali wajib diisi.');
         return;
       }
     }
@@ -225,11 +227,11 @@ export default function Aktivitas() {
         }]);
 
       if (pinjamErr) {
-        alert('Gagal mengajukan peminjaman: ' + pinjamErr.message);
+        toast.error('Gagal mengajukan peminjaman: ' + pinjamErr.message);
         return;
       }
 
-      alert('Pengajuan peminjaman berhasil dikirim! Menunggu persetujuan admin.');
+      toast.success('Pengajuan peminjaman berhasil dikirim! Menunggu persetujuan admin.');
       await fetchDataHartaBenda();
       closeForm();
       return;
@@ -280,8 +282,11 @@ export default function Aktivitas() {
         console.error('Error memperbarui assets:', err);
       }
 
+      toast.success(editId ? 'Catatan aktivitas berhasil diperbarui!' : 'Catatan aktivitas berhasil ditambahkan!');
       await fetchDataHartaBenda();
       closeForm();
+    } else {
+      toast.error('Gagal menyimpan catatan aktivitas.');
     }
   };
 
@@ -303,7 +308,12 @@ export default function Aktivitas() {
       newKeterangan = `[Status: ${newStatus}] ` + newKeterangan;
     }
 
-    await updateAktivitas(item.id, { keterangan: newKeterangan, jenis_aktivitas: newJenis });
+    const ok = await updateAktivitas(item.id, { keterangan: newKeterangan, jenis_aktivitas: newJenis });
+    if (ok) {
+      toast.success(`Status aktivitas berhasil diubah menjadi ${newStatus}!`);
+    } else {
+      toast.error('Gagal memperbarui status aktivitas.');
+    }
     await fetchDataHartaBenda();
   };
 
@@ -326,7 +336,12 @@ export default function Aktivitas() {
 
   const handleConfirmDelete = async () => {
     if (itemToDelete) {
-      await deleteAktivitas(itemToDelete.id);
+      const ok = await deleteAktivitas(itemToDelete.id);
+      if (ok) {
+        toast.success(`Catatan aktivitas "${itemToDelete.jenis_aktivitas}" berhasil dihapus!`);
+      } else {
+        toast.error('Gagal menghapus catatan aktivitas.');
+      }
       await fetchDataHartaBenda();
       setIsDeleteModalOpen(false);
       setItemToDelete(null);
