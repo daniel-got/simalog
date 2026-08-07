@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase';
 import { Card } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
+import { useToast } from '../../components/ui/Toast';
 
 // ─── Badge Helpers ────────────────────────────────────────────────────────────
 const tingkatBadge = (tingkat) => {
@@ -255,6 +256,7 @@ function PersetujuanKerusakanCard({ item, confirmVerifikasiKerusakan, confirmTol
 // MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════════════════════
 export default function Persetujuan() {
+  const toast = useToast();
   // ── State data ────────────────────────────────────────────────────────────
   const [peminjaman, setPeminjaman] = useState([]);
   const [kerusakan, setKerusakan] = useState([]);
@@ -428,8 +430,9 @@ export default function Persetujuan() {
       if (e2) throw e2;
 
       setPeminjaman(prev => prev.filter(p => p.id !== item.id));
+      toast.success('Peminjaman berhasil disetujui!');
     } catch (err) {
-      alert('Gagal menyetujui: ' + (err.message || err));
+      toast.error('Gagal menyetujui: ' + (err.message || err));
     } finally {
       setActionLoading(null);
       closeModal();
@@ -446,8 +449,9 @@ export default function Persetujuan() {
         .eq('id', item.id);
       if (error) throw error;
       setPeminjaman(prev => prev.filter(p => p.id !== item.id));
+      toast.success('Peminjaman berhasil ditolak!');
     } catch (err) {
-      alert('Gagal menolak: ' + (err.message || err));
+      toast.error('Gagal menolak: ' + (err.message || err));
     } finally {
       setActionLoading(null);
       closeModal();
@@ -474,8 +478,9 @@ export default function Persetujuan() {
       if (e2) throw e2;
 
       setKerusakan(prev => prev.filter(k => k.id !== item.id));
+      toast.success('Laporan kerusakan berhasil diverifikasi!');
     } catch (err) {
-      alert('Gagal memverifikasi: ' + (err.message || err));
+      toast.error('Gagal memverifikasi: ' + (err.message || err));
     } finally {
       setActionLoading(null);
       closeModal();
@@ -492,8 +497,9 @@ export default function Persetujuan() {
         .eq('id', item.id);
       if (error) throw error;
       setKerusakan(prev => prev.filter(k => k.id !== item.id));
+      toast.success('Laporan kerusakan berhasil ditolak!');
     } catch (err) {
-      alert('Gagal menolak laporan: ' + (err.message || err));
+      toast.error('Gagal menolak laporan: ' + (err.message || err));
     } finally {
       setActionLoading(null);
       closeModal();
