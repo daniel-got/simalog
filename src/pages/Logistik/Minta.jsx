@@ -141,8 +141,22 @@ export default function Minta() {
   };
 
   const handleExport = () => {
+    const exportData = filtered.map(m => {
+      const brg = barang.find(b => b.kode_barang === m.kode_barang);
+      return {
+        id: m.id,
+        id_user: m.id_user,
+        nama_pemohon: m.nama_pemohon,
+        kode_barang: m.kode_barang,
+        nama_barang: brg?.nama_barang || '-',
+        jumlah: m.jumlah,
+        tanggal_minta: m.tanggal_minta,
+        status_persetujuan: m.status_persetujuan,
+        created_at: m.created_at,
+      };
+    });
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filtered), 'Minta');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), 'Minta');
     XLSX.writeFile(wb, 'Laporan_Permintaan.xlsx');
   };
 

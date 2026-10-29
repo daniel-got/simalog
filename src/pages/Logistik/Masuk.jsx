@@ -113,8 +113,21 @@ export default function Masuk() {
   };
 
   const handleExport = () => {
+    const exportData = filtered.map(m => {
+      const brg = barang.find(b => b.kode_barang === m.kode_barang);
+      return {
+        id: m.id,
+        kode_barang: m.kode_barang,
+        nama_barang: brg?.nama_barang || '-',
+        jenis_transaksi: m.jenis_transaksi,
+        jumlah: m.jumlah,
+        tanggal: m.tanggal,
+        penerima: m.penerima,
+        created_at: m.created_at,
+      };
+    });
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filtered), 'Masuk');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), 'Masuk');
     XLSX.writeFile(wb, 'Laporan_Masuk.xlsx');
   };
 

@@ -124,8 +124,21 @@ export default function Keluar() {
   };
 
   const handleExport = () => {
+    const exportData = filtered.map(k => {
+      const brg = barang.find(b => b.kode_barang === k.kode_barang);
+      return {
+        id: k.id,
+        kode_barang: k.kode_barang,
+        nama_barang: brg?.nama_barang || '-',
+        jenis_transaksi: k.jenis_transaksi,
+        jumlah: k.jumlah,
+        tanggal: k.tanggal,
+        penerima: k.penerima,
+        created_at: k.created_at,
+      };
+    });
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filtered), 'Keluar');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), 'Keluar');
     XLSX.writeFile(wb, 'Laporan_Keluar.xlsx');
   };
 
